@@ -87,7 +87,7 @@ class MovementControl(Node):
         twist = Twist()
 
         # Calculate the desired distance from the goal
-        desired_distance = self.goal_distance - z_value
+        desired_distance = self.goal_distance - z
 
         # Control logic for movement
         if desired_distance > self.threshold:

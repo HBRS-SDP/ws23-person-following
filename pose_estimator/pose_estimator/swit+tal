@@ -77,23 +77,21 @@ def main(args=None):
     rclpy.shutdown()
 
 class MovementControl(Node):
-    def __init__(self, goal_distance, threshold):
+    def __init__(self, goal_distance, distance_threshold):
         super().__init__('movement_control_node')
         self.publisher = self.create_publisher(Twist, 'cmd_vel', 10)
         self.goal_distance = goal_distance
-        self.threshold = threshold
+        self.distance_threshold = distance_threshold
 
     def move(self, z_value):
         twist = Twist()
 
         # Calculate the desired distance from the goal
-        desired_distance = self.goal_distance - z
+        desired_distance = self.goal_distance - z_value
 
-        # Control logic for movement
-        if desired_distance > self.threshold:
+        # If the robot is too far from the goal, move forward
+        if desired_distance > self.distance_threshold:
             twist.linear.x = 0.2  # Adjust the linear velocity as needed
-        elif desired_distance < -self.threshold:
-            twist.linear.x = -0.2  # Adjust the linear velocity as needed
         else:
             twist.linear.x = 0.0  # Stop moving
 
@@ -101,7 +99,7 @@ class MovementControl(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    movement_control = MovementControl(goal_distance=0.5, threshold=0.05)  # Adjust goal_distance and threshold as needed
+    movement_control = MovementControl(goal_distance=0.5, distance_threshold=0.05)  # Adjust goal_distance and threshold as needed
     rclpy.spin(movement_control)
     rclpy.shutdown()
 

@@ -55,47 +55,60 @@ class FollowPersonNode(Node):
             self.get_logger().error(f'CvBridgeError: {e}')
             return
 
-        with self.mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
             # Convert the color image to RGB
-            image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+        with self.mp_pose.Pose(min_detection_confidence=0.4, min_tracking_confidence=0.4) as pose:
+            while True:
 
-            # Make detection
-            results = pose.process(image)
+                image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
 
-            try:
-                landmarks = results.pose_landmarks
-                if landmarks:
-                    left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP]
-                    right_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_HIP]
+                # Make detection
+                results = pose.process(image)
 
-                    self.person_x = (left_hip.x + right_hip.x) / 2
+                try:
+                    landmarks = results.pose_landmarks
+                    if landmarks:
+                        left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_KNEE]
+                        right_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_KNEE]
 
-                    width, height = cv_image.shape[1], cv_image.shape[0]
-                    center_x, center_y = width // 2, height // 2
-                    self.depth_at_person = depth_frame.get_distance(center_x, center_y)
+                        self.person_x = (left_hip.x + right_hip.x) / 2
 
-             
-                    msg = Twist()
-                    desired_distance = 1.0 
+                        print("The center of the person: " , self.person_x)
 
-                    linear_vel = 0.2 
-                    distance_error = self.depth_at_person - desired_distance
+                        # width, height = cv_image.shape[1], cv_image.shape[0]
+                        # center_x, center_y = width // 2, height // 2
+                        # self.depth_at_person = depth_frame.get_distance(center_x, center_y)
 
-                    angular_vel = 0.5 
-                    if self.depth_at_person >1.0 and self.person_x == 0.5:
-                        msg.linear.x = linear_vel * distance_error
-                        msg.angular.z = 0.0 # Straight
-                    if self.depth_at_person >1.0 and self.person_x < 0.4:
-                        msg.angular.z = angular_vel  # Turn right
-                    elif self.depth_at_person >1.0 and self.person_x > 0.6:
-                        msg.angular.z = -angular_vel  # Turn left
+                
+                        # msg = Twist()
+                        # desired_distance = 1.0 
+
+                        # linear_vel = 0.2 
+                        # distance_error = self.depth_at_person - desired_distance
+
+                        # angular_vel = 0.5 
+                        # if self.depth_at_person >1.0 and self.person_x == 0.5:
+                        #     msg.linear.x = linear_vel * distance_error
+                        #     msg.angular.z = 0.0 # Straight
+                        # if self.depth_at_person >1.0 and self.person_x < 0.4:
+                        #     msg.angular.z = angular_vel  # Turn right
+                        # elif self.depth_at_person >1.0 and self.person_x > 0.6:
+                        #     msg.angular.z = -angular_vel  # Turn left
 
 
-                    self.publisher_cmd_vel.publish(msg)
+                    # self.publisher_cmd_vel.publish(msg)
 
-            except Exception as e:
-                self.get_logger().error(f'Error processing pose: {e}')
+                except:
+                    pass
 
+                # Render detections
+                self.mp_drawing.draw_landmarks(image, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
+                                               self.mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+                                               self.mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2))
+
+                cv2.imshow('Mediapipe Feed', image)
+
+                if cv2.waitKey(10) & 0xFF == ord('q'):
+                    break
 def main(args=None):
     rclpy.init(args=args)
     node = FollowPersonNode()

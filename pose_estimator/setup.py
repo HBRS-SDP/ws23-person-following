@@ -24,8 +24,8 @@ setup(
     entry_points={
         'console_scripts': [
         'estimate_pose=pose_estimator.estimate_pose:main',
-        'estimate_pose_realsense=pose_estimator.estimate_pose_realsense:main'
-        'follow_person=pose_estimator.follow_bot:main'
+        'estimate_pose_realsense=pose_estimator.estimate_pose_realsense:main',
+        'follow_person=pose_estimator.follow_bot:main',
         ],
     },
 )

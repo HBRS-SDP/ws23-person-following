@@ -22,7 +22,7 @@ class PoseEstimationNode(Node):
         self.pipeline.start(config)
 
     def run(self):
-        with self.mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+        with self.mp_pose.Pose(min_detection_confidence=0.3, min_tracking_confidence=0.3) as pose:
             while True:
                 # Wait for a frame from RealSense camera
                 frames = self.pipeline.wait_for_frames()
@@ -51,30 +51,29 @@ class PoseEstimationNode(Node):
                     # if self.mp_pose.PoseLandmark.LEFT_ELBOW in self.mp_pose.PoseLandmark:
                     #     left_elbow = landmarks[self.mp_pose.PoseLandmark.LEFT_ELBOW.value]
                     #     print(left_elbow)
-                    while landmarks is True:
+                    # while landmarks:
 
                         # The center pixel's depth value
-                        width, height = color_frame.get_width(), color_frame.get_height()
-                        center_x, center_y = width // 2, height // 2  # Center of the image
+                    width, height = color_frame.get_width(), color_frame.get_height()
+                    center_x, center_y = width // 2, height // 2  # Center of the image
+                    # The distance value at the center pixel
+                    depth_value = depth_frame.get_distance(center_x, center_y)
+                    # Print the depth value
+                    print("Depth at center pixel:", depth_value)
+                    # print("Moving towards: ", landmarks)
+                    if landmarks:
+                        print('landmarks found')
 
-                        # The distance value at the center pixel
-                        depth_value = depth_frame.get_distance(center_x, center_y)
+                        # if depth_value > 0.5:
 
-                        # Print the depth value
-                        print("Depth at center pixel: {:.2f} meters".format(depth_value))
-                        print("Moving towards: ", landmarks)
+                        #     msg = Twist()
+                        #     """
+                        #     set the linear and angular velocity of the robot according to required behavior
+                        #     """
+                        #     # example: linear velocity in 'x' direction can be set as: "msg.linear.x = 0.5"
+                        #     msg.linear.x = 0.5 # m/s; this is example code, you need to change this section according to the required behavior
 
-
-                        if depth_value > 0.5:
-
-                            msg = Twist()
-                            """
-                            set the linear and angular velocity of the robot according to required behavior
-                            """
-                            # example: linear velocity in 'x' direction can be set as: "msg.linear.x = 0.5"
-                            msg.linear.x = 0.5 # m/s; this is example code, you need to change this section according to the required behavior
-
-                            self.publisher_.publish(msg)
+                        #     self.publisher_.publish(msg)
 
 
                     # if self.mp_pose.PoseLandmark.LEFT_ELBOW in self.mp_pose.PoseLandmark:

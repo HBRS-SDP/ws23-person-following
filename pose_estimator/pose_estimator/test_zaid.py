@@ -4,7 +4,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import pyrealsense2 as rs
-from geometry_msgs.msg import Twist 
+from geometry_msgs.msg import Twist
 
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
@@ -59,26 +59,54 @@ class PoseEstimationNode(Node):
                 try:
                     landmarks = results.pose_landmarks.landmark
 
+                    left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
+                    right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP]
+
                     if landmarks:  # Check if landmarks are available
-                        # Calculate the center of the detected person
-                        self.person_x = (landmarks[mp_pose.PoseLandmark.LEFT_HIP].x + landmarks[mp_pose.PoseLandmark.RIGHT_HIP].x) / 2
 
-                        # Update the last known pose
-                        self.last_known_pose = {
-                            'person_x': self.person_x,
-                            'depth_at_person': depth_frame.get_distance(int(self.person_x * image.shape[1]), int(image.shape[0] / 2))
-                        }
+                        # Calculating the center of the detected person
+                        self.person_x = (left_hip.x + right_hip.x) / 2
 
-                        # Reset occlusion flag
-                        self.occlusion_detected = False
+                        print("The center of the found person: ", self.person_x)
 
-                    elif self.last_known_pose and not self.occlusion_detected:
-                        # Person not detected, but last known pose exists
-                        # Implement occlusion behavior
-                        self.handle_occlusion()
+                        width, height = image.shape[1], image.shape[0]
+                        center_x, center_y = width // 2, height // 2
+                        self.depth_at_person = depth_frame.get_distance(center_x, center_y)
+
+                        # Check for occlusion
+                        if self.depth_at_person == 0.0:
+                            self.occlusion_detected = True
+                            print("Occlusion detected!")
+
+                        msg = Twist()
+                        desired_distance = 1.0
+                        linear_vel = 0.4
+                        angular_vel = 0.65
+
+                        # Adjust behavior based on occlusion detection
+                        if not self.occlusion_detected:
+                            if self.depth_at_person > desired_distance:
+                                # Move forward
+                                msg.linear.x = linear_vel
+                                msg.angular.z = (0.5 - self.person_x) * angular_vel
+                            elif self.depth_at_person < desired_distance:
+                                # Move backward
+                                msg.linear.x = -linear_vel
+                            else:
+                                # Stop
+                                msg.linear.x = 0.0
+                                msg.angular.z = 0.0
+                        else:
+                            # Perform occlusion behavior
+                            self.adjust_orientation_and_movement(msg)
+
+                        self.publisher_.publish(msg)
+
+                    else:
+                        print("No person detected!")
 
                 except Exception as e:
-                    self.get_logger().error(f"Error: {e}")
+                    print(f"Exception: {e}")
 
                 # Render detections
                 self.mp_drawing.draw_landmarks(image, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
@@ -93,14 +121,25 @@ class PoseEstimationNode(Node):
         self.pipeline.stop()
         cv2.destroyAllWindows()
 
-    def handle_occlusion(self):
-        # Implement your occlusion behavior here
-        # Example: Rotate towards the last known pose and move forward
-        msg = Twist()
-        msg.linear.x = 0.2  # Set your desired linear velocity
-        msg.angular.z = (0.5 - self.last_known_pose['person_x']) * 0.65  # Adjust angular velocity based on the deviation from the center
-        self.publisher_.publish(msg)
-        self.occlusion_detected = True
+    def adjust_orientation_and_movement(self, msg):
+        # Implement logic for adjusting orientation and movement during occlusion
+        # Set the desired orientation and movement based on the last known pose
+        if self.last_known_pose:
+            # Calculate desired angular velocity and linear velocity
+            desired_angular_vel = 0.1  # Adjust as needed
+            desired_linear_vel = 0.2  # Adjust as needed
+
+            # Calculate the difference between the current pose and the last known pose
+            # Adjust the robot's joints (e.g., head or camera) to rotate in the direction of the stored pose
+
+            # Set the command velocity
+            msg.linear.x = desired_linear_vel
+            msg.angular.z = desired_angular_vel
+
+        else:
+            # No last known pose available, stop the robot
+            msg.linear.x = 0.0
+            msg.angular.z = 0.0
 
 def main(args=None):
     rclpy.init(args=args)

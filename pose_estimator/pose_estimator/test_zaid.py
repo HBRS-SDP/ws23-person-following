@@ -29,8 +29,7 @@ class PoseEstimationNode(Node):
 
         # Initialize variables for occlusion behavior
         self.last_known_pose = None
-        self.occlusion_timeout = 5  # seconds
-        self.last_detection_time = None
+        self.occlusion_detected = False
 
     def run(self):
         with self.mp_pose.Pose(min_detection_confidence=0.4, min_tracking_confidence=0.4) as pose:
@@ -60,63 +59,26 @@ class PoseEstimationNode(Node):
                 try:
                     landmarks = results.pose_landmarks.landmark
 
-                    left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
-                    right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP]
-
                     if landmarks:  # Check if landmarks are available
+                        # Calculate the center of the detected person
+                        self.person_x = (landmarks[mp_pose.PoseLandmark.LEFT_HIP].x + landmarks[mp_pose.PoseLandmark.RIGHT_HIP].x) / 2
 
-                        # Calculating the center of the detected person
-                        self.person_x = (left_hip.x + right_hip.x) / 2
-
-                        print("The center of the found person:", self.person_x)
-
-                        width, height = image.shape[1], image.shape[0]
-                        center_x, center_y = width // 2, height // 2
-                        self.depth_at_person = depth_frame.get_distance(center_x, center_y)
-
-                        # Update last known pose
+                        # Update the last known pose
                         self.last_known_pose = {
                             'person_x': self.person_x,
-                            'depth_at_person': self.depth_at_person
+                            'depth_at_person': depth_frame.get_distance(int(self.person_x * image.shape[1]), int(image.shape[0] / 2))
                         }
 
-                        # Set the last detection time
-                        self.last_detection_time = self.get_clock().now()
+                        # Reset occlusion flag
+                        self.occlusion_detected = False
 
-                        msg = Twist()
-                        desired_distance = 1.0
-                        linear_vel = 0.4
-                        angular_vel = 0.65
+                    elif self.last_known_pose and not self.occlusion_detected:
+                        # Person not detected, but last known pose exists
+                        # Implement occlusion behavior
+                        self.handle_occlusion()
 
-                        if self.depth_at_person > desired_distance:
-                            # Move forward
-                            msg.linear.x = linear_vel
-                            msg.angular.z = (0.5 - self.person_x) * angular_vel
-
-                        elif self.depth_at_person < desired_distance:
-                            # Move backward
-                            msg.linear.x = -linear_vel
-
-                        self.publisher_.publish(msg)
-
-                    else:
-                        print("No person detected!")
-
-                        # Check for occlusion behavior
-                        if self.last_known_pose and self.last_detection_time:
-                            elapsed_time = (self.get_clock().now() - self.last_detection_time).to_msg().sec
-
-                            if elapsed_time < self.occlusion_timeout:
-                                # Perform occlusion behavior
-                                print("Occlusion detected. Adjusting orientation towards last known pose.")
-                                self.adjust_orientation_towards_last_pose()
-
-                            else:
-                                # Reset last known pose if occlusion timeout is reached
-                                self.last_known_pose = None
-
-                except:
-                    pass
+                except Exception as e:
+                    self.get_logger().error(f"Error: {e}")
 
                 # Render detections
                 self.mp_drawing.draw_landmarks(image, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
@@ -131,10 +93,14 @@ class PoseEstimationNode(Node):
         self.pipeline.stop()
         cv2.destroyAllWindows()
 
-    def adjust_orientation_towards_last_pose(self):
-        if self.last_known_pose:
-            # Implement orientation adjustment towards the last known pose
-            print("Adjusting orientation towards last known pose:", self.last_known_pose)
+    def handle_occlusion(self):
+        # Implement your occlusion behavior here
+        # Example: Rotate towards the last known pose and move forward
+        msg = Twist()
+        msg.linear.x = 0.2  # Set your desired linear velocity
+        msg.angular.z = (0.5 - self.last_known_pose['person_x']) * 0.65  # Adjust angular velocity based on the deviation from the center
+        self.publisher_.publish(msg)
+        self.occlusion_detected = True
 
 def main(args=None):
     rclpy.init(args=args)

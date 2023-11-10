@@ -5,12 +5,13 @@ import mediapipe as mp
 import numpy as np
 import pyrealsense2 as rs
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
 
-class FollowPersonNode(Node):
+mp_drawing = mp.solutions.drawing_utils
+mp_pose = mp.solutions.pose
+
+class PoseEstimationNode(Node):
     def __init__(self):
-        super().__init__('follow_person_node')
+        super().__init__('pose_estimation_node')
         self.mp_drawing = mp.solutions.drawing_utils
         self.mp_pose = mp.solutions.pose
 
@@ -20,124 +21,130 @@ class FollowPersonNode(Node):
         config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
 
-        # Create a publisher for cmd_vel messages
-        self.publisher_cmd_vel = self.create_publisher(Twist, 'cmd_vel', 10)
+        # Start the pipeline
+        self.pipeline.start(config)
 
-        # Create a subscriber for the camera image
-        self.subscriber_image = self.create_subscription(
-            Image,
-            'camera/image',
-            self.image_callback,
-            10
-        )
+        # Create a publisher to control the robot's movement
+        self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
 
-        self.bridge = CvBridge()
+        # Initialize memory for last known person's position
+        self.last_known_position = None
 
-        # Initialize variables to keep track of the person's position
-        self.person_x = 0
-        self.depth_at_person = 0
-        self.last_known_person_x = 0  # Initialize to the center
-        self.person_in_sight = False  # Flag to indicate if the person is in sight
+    def run(self):
+        with self.mp_pose.Pose(min_detection_confidence=0.4, min_tracking_confidence=0.4) as pose:
+            while True:
+                # Wait for a frame from RealSense camera
+                frames = self.pipeline.wait_for_frames()
+                color_frame = frames.get_color_frame()
+                depth_frame = frames.get_depth_frame()
+                if not color_frame or not depth_frame:
+                    continue
 
-    def image_callback(self, msg):
-        try:
-            cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
-        except CvBridgeError as e:
-            self.get_logger().error(f'CvBridgeError: {e}')
-            return
+                # Convert the color frame to a NumPy array
+                color_image = np.asanyarray(color_frame.get_data())
 
-        with self.mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
-            # Wait for a frame from the RealSense camera
-            frames = self.pipeline.wait_for_frames()
-            depth_frame = frames.get_depth_frame()
+                # Recolor image to RGB
+                image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
+                image.flags.writeable = False
 
-            # Convert the color image to RGB
-            image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+                # Make detection
+                results = pose.process(image)
 
-            # Make detection
-            results = pose.process(image)
+                # Recolor back to BGR
+                image.flags.writeable = True
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-            try:
-                landmarks = results.pose_landmarks
-                if landmarks:
-                    # Extract the position of the person's left and right hips
-                    left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP]
-                    right_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_HIP]
+                # Extract landmarks
+                try:
+                    landmarks = results.pose_landmarks.landmark
+                    
 
-                    # Calculate the person's center position
+                    left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
+                    right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP]
+                    # Calculating the center of the detected person
+
                     self.person_x = (left_hip.x + right_hip.x) / 2
-
-                    # Calculate the depth value at the center position
-                    width, height = cv_image.shape[1], cv_image.shape[0]
+                    width, height = image.shape[1], image.shape[0]
                     center_x, center_y = width // 2, height // 2
                     self.depth_at_person = depth_frame.get_distance(center_x, center_y)
 
-                    # Store the last known person's position when in sight
-                    self.last_known_person_x = self.person_x
-                    self.person_in_sight = True
+                    self.last_known_position = self.person_x  # Update last known position
+                    self.last_distance = self.depth_at_person
 
-                    msg = Twist()
-                    desired_distance = 1.0  # Desired distance between the robot and the person
+                    if landmarks and self.depth_at_person:  # Check if landmarks and distances are available
 
-                    # Adjust linear velocity based on the distance error
-                    linear_vel = 0.2  # Constant linear velocity (adjust as needed)
-                    distance_error = self.depth_at_person - desired_distance
-                    msg.linear.x = linear_vel + linear_vel * distance_error
+                        msg = Twist()
+                        desired_distance = 1.0
+                        linear_vel = 0.4
+                        angular_vel = 0.55
+                        # expected_turn = (0.5 - self.person_x) * angular_vel
 
-                    # Adjust angular velocity based on the person's position
-                    angular_vel = 0.5  # Constant angular velocity (adjust as needed)
-                    if self.person_x < 0.4:
-                        msg.angular.z = angular_vel  # Turn right if person is on the left
-                    elif self.person_x > 0.6:
-                        msg.angular.z = -angular_vel  # Turn left if person is on the right
-                    else:
-                        msg.angular.z = 0.0  # Keep straight if person is in the center
-
-                    self.publisher_cmd_vel.publish(msg)
-
-                else:
-
-                    if self.last_known_person_x:
-                        # If the person is not detected, use the last known position
-                        if self.person_in_sight:
-                            msg = Twist()
-                            desired_distance = 1.0  # Desired distance between the robot and the person
-
-                            # Adjust linear velocity based on the distance error
-                            linear_vel = 0.2  # Constant linear velocity (adjust as needed)
-                            distance_error = self.depth_at_person - desired_distance
-                            msg.linear.x = linear_vel + linear_vel * distance_error
-
-                            # Adjust angular velocity based on the last known person's position
-                            angular_vel = 0.5  # Constant angular velocity (adjust as needed)
-                            if distance_error==0.0:
-                                if self.last_known_person_x < 0.4:
-                                    msg.angular.z = -angular_vel  # Turn left if person was on the left
-                                elif self.last_known_person_x > 0.6:
-                                    msg.angular.z = angular_vel  # Turn right if person was on the right
-                                else:
-                                    msg.angular.z = 0.0  # Keep straight if person was in the center
-
-                                self.publisher_cmd_vel.publish(msg)
-                            else:
-                                msg.linear.x= linear_vel + linear_vel * distance_error
-                                self.publisher_cmd_vel.publish(msg)
-                    
-                    else:
+                        if self.depth_at_person > desired_distance:
+                            # Moving forward and turns
+                            msg.linear.x = linear_vel
+                            msg.angular.z = (0.5 - self.person_x) * angular_vel
                         
-                        #To stay idle.
-                        msg= Twist()
-                        msg.linear.x= 0.0
-                        msg.linear.y= 0.0
-                        msg.angular.z= 0.0
-                        self.publisher_cmd_vel.publish(msg)
+                        if self.depth_at_person == desired_distance:
+                            # Stop moving
+                            msg.linear.x = 0.0
+                            msg.angular.z = 0.0
 
-            except Exception as e:
-                self.get_logger().error(f'Error processing pose: {e}')
+                        elif self.depth_at_person < desired_distance:
+                            # Stop moving
+                            msg.linear.x = 0.0  # Stop moving
+                            msg.angular.z = 0.0
+
+                        self.publisher_.publish(msg)
+
+                    else:
+                        if self.last_known_position is not None:
+                            msg = Twist()
+                            desired_distance = 0.0
+                            linear_vel = 0.4
+                            angular_vel = 0.55
+                            # Move based on the last known position
+                            while self.last_distance> desired_distance:
+                                # Move forward
+                                # msg.linear.x = linear_vel
+                                print("Moving forward")
+
+
+                            if self.last_known_position < 0.4 and self.last_distance == desired_distance:
+                                # msg.linear.x = 0.0  # Stop moving forward
+                                # msg.angular.z = angular_vel  # Turn right
+                                print("Moving left to check on the person")
+                            elif self.last_known_position > 0.6 and self.last_distance == desired_distance:
+                                # msg.linear.x = 0.0  # Stop moving forward
+                                # msg.angular.z = -angular_vel  # Turn left
+                                print("Moving right to check on the person")
+
+                        else:
+                            # No person detected was detected at all
+                            msg.linear.x = 0.0  # Stop moving
+                            msg.angular.z = 0.0
+
+                        self.publisher_.publish(msg)
+
+                except Exception as e:
+                    pass
+
+                # Render detections
+                self.mp_drawing.draw_landmarks(image, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
+                                               self.mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+                                               self.mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2))
+
+                cv2.imshow('Mediapipe Feed', image)
+
+                if cv2.waitKey(10) & 0xFF == ord('q'):
+                    break
+
+        self.pipeline.stop()
+        cv2.destroyAllWindows()
 
 def main(args=None):
     rclpy.init(args=args)
-    node = FollowPersonNode()
+    node = PoseEstimationNode()
+    node.run()
     rclpy.spin(node)
     rclpy.shutdown()
 

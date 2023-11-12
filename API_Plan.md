@@ -1,15 +1,14 @@
+# Software Delivery
+The software package is delivered as a Python script structured as a ROS package. It includes dependencies such as `mediapipe`, `pyrealsense2` for pose estimation, and `rclpy` for ROS integration. The script utilizes the Robot Operating System (ROS) and provides laser-based obstacle avoidance using the `/scan` topic.
 
-### Software Delivery:
-The software package is delivered as a Python script structured as a ROS package. It includes dependencies such as the `mediapipe`, `pyrealsense2` for pose estimation, and `rclpy` for ROS integration. The script utilizes the Robot Operating System (ROS) and provides laser-based obstacle avoidance using the `/scan` topic.
-
-### MVP Test Scenario: Following the robot at a threshold distance
-#### Triggering the Scenario:
+## MVP Test Scenario: 
+- Robot is following the human at a threshold distance
+### Triggering the Scenario:
 - **Operator Action:**
   - The operator executes the `main()` function of the Python script on the robot.
   - Optionally, the operator places a person within the field of view of the RealSense camera.
 
-#### System Behavior:
-
+### System Behavior:
 - **Initialization:**
   - The system initiates the RealSense pipeline.
   - It starts listening to color and depth streams.
@@ -23,7 +22,7 @@ The software package is delivered as a Python script structured as a ROS package
   - The obstacle avoidance behavior is integrated with the existing pose-based following behavior.
 
 - **Robot Movement:**
-  - Based on the combined information from pose estimation and laser scans, the robot publishes `Twist` messages to the '/cmd_vel' topic.
+  - Based on the combined information from pose estimation and laser scans, the robot publishes `Twist` messages to the `/cmd_vel` topic.
 
 - **Visualization:**
   - The system displays the RealSense color frames with pose landmarks overlaid in the 'Mediapipe Feed' window.
@@ -34,18 +33,15 @@ The software package is delivered as a Python script structured as a ROS package
   - Upon termination, the RealSense pipeline stops, and the visualization window is closed.
 
 ### API Descriptions:
-
 #### Inputs/Outputs:
-
 - **ROS Topics:**
   - **Inputs:**
     - Color and depth streams from the RealSense camera.
     - Laser scan data from the `/scan` topic.
   - **Outputs:**
-    - `Twist` messages published to the '/cmd_vel' topic for robot control.
+    - `Twist` messages published to the `/cmd_vel` topic for robot control.
 
 #### Custom Data Structures:
-
 - **ROS Messages:**
   - The `Twist` message is used to convey linear and angular velocities for robot control.
   - Laser scan data is received in the standard `LaserScan` message format.
@@ -60,11 +56,17 @@ The software package is delivered as a Python script structured as a ROS package
   - Additional classes or functions can be added for laser-based obstacle avoidance.
 
 ### Additional Considerations:
-
 - **Error Handling:**
-  - The script should handle errors gracefully, such as absence of valid frames, pose estimation failures, or issues with laser scan data.
+  - The script should handle errors gracefully, such as the absence of valid frames, pose estimation failures, or issues with laser scan data.
   - Errors should be logged or printed for debugging purposes.
 
+- **ROS2 Quality Tools:**
+  - Using ROS2 quality tools, including `roslint` and `ament_lint`, to ensure high code quality.
+  - Integrating these tools in the development workflow to enforce coding standards and best practices.
+
+- **Static Analysis:**
+  - Run static analysis tools regularly to catch potential issues early in the development process.
+  - Static analysis helps identify coding errors, stylistic issues, and potential sources of bugs before runtime.
 - **Documentation:**
   - In-code documentation should be provided using comments.
   - Update the user manual to include information about laser-based obstacle avoidance and any additional parameters or configurations.
@@ -83,7 +85,7 @@ The software package is delivered as a Python script structured as a ROS package
 **Then:**
 - The robot should initiate the RealSense pipeline.
 - Pose estimation should be performed on the detected person.
-- The robot should publish Twist messages to '/cmd_vel' based on the person's position and depth information.
+- The robot should publish `Twist` messages to `/cmd_vel` based on the person's position and depth information.
 - Calculate and print the expected turn.
 - The robot should move forward if the person is farther than the desired distance, stop if at the desired distance, and move backward if closer than the desired distance.
 
@@ -100,7 +102,7 @@ The software package is delivered as a Python script structured as a ROS package
 **Then:**
 - The robot should initiate the RealSense pipeline.
 - Since no person is detected, print "No person detected!".
-- The robot should not publish any Twist messages.
+- The robot should not publish any `Twist` messages.
 
 ### Test Case 3:
 
@@ -115,7 +117,7 @@ The software package is delivered as a Python script structured as a ROS package
 **Then:**
 - The robot should handle the absence of valid frames gracefully.
 - Pose estimation should not be performed.
-- The robot should not publish any Twist messages.
+- The robot should not publish any `Twist` messages.
 
 ### Test Case 4:
 
@@ -144,7 +146,7 @@ The software package is delivered as a Python script structured as a ROS package
 **Then:**
 - The robot should handle the absence of depth information gracefully.
 - Print a message indicating the absence of depth information.
-- The robot should not publish any Twist messages.
+- The robot should not publish any `Twist` messages.
 
 ### Test Case 6:
 
@@ -160,7 +162,7 @@ The software package is delivered as a Python script structured as a ROS package
 **Then:**
 - The robot should handle pose estimation failures gracefully.
 - Print a message indicating the failure.
-- The robot should not publish any Twist messages.
+- The robot should not publish any `Twist` messages.
 
 ### Test Case 7:
 
@@ -205,5 +207,3 @@ The software package is delivered as a Python script structured as a ROS package
 **Then:**
 - The robot should handle the dynamic entry of a person into the frame.
 - Start tracking the person's movements once detected and print relevant information.
-
-These test cases cover a range of scenarios to ensure robustness and functionality in different situations. Adjust specifics based on your system's behavior and requirements.

@@ -8,6 +8,12 @@ from geometry_msgs.msg import Twist
 
 class PoseEstimationNode(Node):
     def __init__(self):
+        """
+        Initializes the PoseEstimationNode class.
+
+        This class performs real-time pose estimation using Mediapipe and processes depth information
+        from a RealSense camera for robot control.
+        """
         super().__init__('pose_estimation_node')
         self.mp_drawing = mp.solutions.drawing_utils
         self.mp_pose = mp.solutions.pose
@@ -22,6 +28,9 @@ class PoseEstimationNode(Node):
         self.pipeline.start(config)
 
     def run(self):
+        """
+        Main loop for pose estimation and robot control.
+        """
         with self.mp_pose.Pose(min_detection_confidence=0.3, min_tracking_confidence=0.3) as pose:
             while True:
                 # Wait for a frame from RealSense camera
@@ -48,40 +57,22 @@ class PoseEstimationNode(Node):
                 # Extract landmarks
                 try:
                     landmarks = results.pose_world_landmarks.landmark
-                    # if self.mp_pose.PoseLandmark.LEFT_ELBOW in self.mp_pose.PoseLandmark:
-                    #     left_elbow = landmarks[self.mp_pose.PoseLandmark.LEFT_ELBOW.value]
-                    #     print(left_elbow)
-                    # while landmarks:
 
-                        # The center pixel's depth value
+                    # The center pixel's depth value
                     width, height = color_frame.get_width(), color_frame.get_height()
                     center_x, center_y = width // 2, height // 2  # Center of the image
                     # The distance value at the center pixel
-                    depth_value = depth_frame.get_distance(center_x, center_y)
-                    # Print the depth value
-                    print("Depth at center pixel:", depth_value)
-                    # print("Moving towards: ", landmarks)
+                    #depth_value = depth_frame.get_distance(center_x, center_y)
+
                     if landmarks:
-                        print('landmarks found')
+                        print('Landmarks found')
+                        depth_value = depth_frame.get_distance(center_x, center_y)
+                        print(depth_value)
+ 
 
-                        # if depth_value > 0.5:
-
-                        #     msg = Twist()
-                        #     """
-                        #     set the linear and angular velocity of the robot according to required behavior
-                        #     """
-                        #     # example: linear velocity in 'x' direction can be set as: "msg.linear.x = 0.5"
-                        #     msg.linear.x = 0.5 # m/s; this is example code, you need to change this section according to the required behavior
-
-                        #     self.publisher_.publish(msg)
-
-
-                    # if self.mp_pose.PoseLandmark.LEFT_ELBOW in self.mp_pose.PoseLandmark:
-                    #     left_elbow = landmarks[self.mp_pose.PoseLandmark.LEFT_ELBOW.value]
-                    #     print(left_elbow)
-
-                except:
-                    pass
+                except Exception as e:
+                    # Catch any exceptions that might occur during processing
+                    self.get_logger().error(f"Error in pose estimation: {e}")
 
                 # Render detections
                 self.mp_drawing.draw_landmarks(image, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS,
@@ -97,6 +88,9 @@ class PoseEstimationNode(Node):
         cv2.destroyAllWindows()
 
 def main(args=None):
+    """
+    Main function to initialize and run the PoseEstimationNode.
+    """
     rclpy.init(args=args)
     node = PoseEstimationNode()
     node.run()

@@ -2,10 +2,8 @@
 ## Software Development Project
  
 Base code for ROS2 based person following robot involving RGB-D camera, laser scanner <br>
-Milestone Presentations [Link](https://drive.google.com/drive/folders/1fSUbau2GBS1j4a7OnIZlPYnxty2QNiYR?usp=drive_link) 
-
-## MVP - Minimum Viable Product
-- Following the robot at a threshold distance
+Milestone Presentations [Link](https://drive.google.com/drive/folders/1fSUbau2GBS1j4a7OnIZlPYnxty2QNiYR?usp=drive_link) <br>
+[How to access the API ?](https://github.com/HBRS-SDP/ws23-person-following/edit/testing/README.md)
 ### Technologies
 - Robot Platform: Robile3
 - OS: Ubuntu 22.04 LTS

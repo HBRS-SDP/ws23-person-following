@@ -1,6 +1,6 @@
 
 ### Software Delivery:
-The software package is delivered as a Python script structured as a ROS package. It includes dependencies such as the `mediapipe`, `pyrealsense2` for pose estimation, and `rospy` for ROS integration. The script utilizes the Robot Operating System (ROS) and provides laser-based obstacle avoidance using the `/scan` topic.
+The software package is delivered as a Python script structured as a ROS package. It includes dependencies such as the `mediapipe`, `pyrealsense2` for pose estimation, and `rclpy` for ROS integration. The script utilizes the Robot Operating System (ROS) and provides laser-based obstacle avoidance using the `/scan` topic.
 
 ### MVP Test Scenario: Following the robot at a threshold distance
 #### Triggering the Scenario:

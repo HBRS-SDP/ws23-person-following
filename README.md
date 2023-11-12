@@ -5,7 +5,7 @@ Base code for ROS2 based person following robot involving RGB-D camera, laser sc
 
 Milestone Presentations [Link](https://drive.google.com/drive/folders/1fSUbau2GBS1j4a7OnIZlPYnxty2QNiYR?usp=drive_link) <br>
 
-[Deliverables for API ](https://github.com/HBRS-SDP/ws23-person-following/API_Plan.md) 
+[Deliverables for API ](https://github.com/HBRS-SDP/ws23-person-following/blob/main/API_Plan.md) 
 
 ### Technologies
 - Robot Platform: Robile3

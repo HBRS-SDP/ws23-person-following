@@ -26,7 +26,7 @@ class PoseEstimationNode(Node):
         self.scan_subscription = self.create_subscription(
             LaserScan,
             '/scan',
-            self.scan_callback,
+            self.run,
             10
         )
 
@@ -35,16 +35,8 @@ class PoseEstimationNode(Node):
         self.depth_at_person = None
         self.point_at_min_dist = None
 
-    def scan_callback(self, msg):
-        # Use laser scan data for collision avoidance
-        self.ranges = msg.ranges
-        if self.ranges:
-            laser = np.array(self.ranges)
-            laser = np.nan_to_num(laser, nan=0.0)
-            laser[laser <= 0.02] = 1.0
-            self.point_at_min_dist = min(laser)
 
-    def run(self):
+    def run(self,msg):
         with self.mp_pose.Pose(min_detection_confidence=0.4, min_tracking_confidence=0.4) as pose:
             while rclpy.ok():
                 # Wait for a frame from RealSense camera
@@ -67,6 +59,14 @@ class PoseEstimationNode(Node):
                 # Recolor back to BGR
                 image.flags.writeable = True
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+                self.ranges = msg.ranges
+                if self.ranges:
+                    laser = np.array(self.ranges)
+                    laser = np.nan_to_num(laser, nan=0.0)
+                    laser[laser <= 0.02] = 1.0
+                    self.point_at_min_dist = min(laser)
+                
 
                 # Extract landmarks
                 try:

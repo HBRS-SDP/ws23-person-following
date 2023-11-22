@@ -6,6 +6,9 @@ import numpy as np
 import pyrealsense2 as rs
 from geometry_msgs.msg import Twist
 
+mp_drawing = mp.solutions.drawing_utils
+mp_pose = mp.solutions.pose
+
 class PoseEstimationNode(Node):
     def __init__(self):
         super().__init__('pose_estimation_node')
@@ -53,6 +56,9 @@ class PoseEstimationNode(Node):
                     #     print(left_elbow)
                     # while landmarks:
 
+                    left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
+                    right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP]
+
                         # The center pixel's depth value
                     width, height = color_frame.get_width(), color_frame.get_height()
                     center_x, center_y = width // 2, height // 2  # Center of the image
@@ -62,8 +68,10 @@ class PoseEstimationNode(Node):
                     print("Depth at center pixel:", depth_value)
                     # print("Moving towards: ", landmarks)
                     if landmarks:
-                        print('landmarks found')
+                        self.person_x = (left_hip.x + right_hip.x) / 2
 
+                        print("The center of the found person: ", self.person_x)
+                        print("Landmarks: ", )
                         # if depth_value > 0.5:
 
                         #     msg = Twist()
@@ -76,9 +84,9 @@ class PoseEstimationNode(Node):
                         #     self.publisher_.publish(msg)
 
 
-                    # if self.mp_pose.PoseLandmark.LEFT_ELBOW in self.mp_pose.PoseLandmark:
-                    #     left_elbow = landmarks[self.mp_pose.PoseLandmark.LEFT_ELBOW.value]
-                    #     print(left_elbow)
+                    if self.mp_pose.PoseLandmark.LEFT_ELBOW in self.mp_pose.PoseLandmark:
+                        left_elbow = landmarks[self.mp_pose.PoseLandmark.LEFT_ELBOW.value]
+                        print(left_elbow)
 
                 except:
                     pass

@@ -23,7 +23,7 @@ class PoseEstimationNode(Node):
 
         # Create a publisher to control the robot's movement
         self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.scan_subscription = self.create_subscription(
+        self.scan_subscription = self.node.create_subscription(
             LaserScan,
             '/scan',
             self.run,

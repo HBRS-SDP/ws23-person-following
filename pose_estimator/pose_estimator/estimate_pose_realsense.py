@@ -22,7 +22,7 @@ class PoseEstimationNode(Node):
         self.pipeline.start(config)
 
     def run(self):
-        with self.mp_pose.Pose(min_detection_confidence=0.3, min_tracking_confidence=0.3) as pose:
+        with self.mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.35) as pose:
             while True:
                 # Wait for a frame from RealSense camera
                 frames = self.pipeline.wait_for_frames()

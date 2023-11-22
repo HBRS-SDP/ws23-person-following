@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 import cv2
 import mediapipe as mp
+from sensor_msgs.msg import Joy
 import numpy as np
 import pyrealsense2 as rs
 from geometry_msgs.msg import Twist
@@ -23,10 +24,10 @@ class PoseEstimationNode(Node):
 
         # Create a publisher to control the robot's movement
         self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.scan_subscription = self.node.create_subscription(
+        self.scan_subscription = self.create_subscription(
             LaserScan,
             '/scan',
-            self.run,
+            self.scan_callback,
             10
         )
 
@@ -34,9 +35,29 @@ class PoseEstimationNode(Node):
         self.person_x = None
         self.depth_at_person = None
         self.point_at_min_dist = None
+        # Create a subscriber to receive joystick input
+        self.joy_subscription = self.create_subscription(
+            Joy,
+            '/joy',
+            self.joy_callback,
+            10
+        )
+    def joy_callback(self, joy_msg):
+        # Process joystick input here
+        # Example: Extract joystick axes and buttons
+        self.buttons = joy_msg.buttons
 
 
-    def run(self,msg):
+    def scan_callback(self, msg):
+        # Use laser scan data for collision avoidance
+        self.ranges = msg.ranges
+        if self.ranges:
+            laser = np.array(self.ranges)
+            laser = np.nan_to_num(laser, nan=0.0)
+            laser[laser <= 0.02] = 1.0
+            self.point_at_min_dist = min(laser)
+
+    def run(self):
         with self.mp_pose.Pose(min_detection_confidence=0.4, min_tracking_confidence=0.4) as pose:
             while rclpy.ok():
                 # Wait for a frame from RealSense camera
@@ -60,13 +81,6 @@ class PoseEstimationNode(Node):
                 image.flags.writeable = True
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-                self.ranges = msg.ranges
-                if self.ranges:
-                    laser = np.array(self.ranges)
-                    laser = np.nan_to_num(laser, nan=0.0)
-                    laser[laser <= 0.02] = 1.0
-                    self.point_at_min_dist = min(laser)
-                
 
                 # Extract landmarks
                 try:
@@ -86,13 +100,13 @@ class PoseEstimationNode(Node):
                         linear_vel = 0.4
                         angular_vel = 0.65
 
-                        if self.point_at_min_dist < self.safe_min_range:
-                            msg.linear.x = 0.0
-                            msg.angular.z = 0.0
-                            self.publisher_.publish(msg)
-                            print("Avoiding obstacle")
+                        # if self.point_at_min_dist < self.safe_min_range:
+                        #     msg.linear.x = 0.0
+                        #     msg.angular.z = 0.0
+                        #     self.publisher_.publish(msg)
+                        #     print("Avoiding obstacle")
 
-                        elif self.depth_at_person > desired_distance:
+                        if self.depth_at_person > desired_distance:
                             # Move forward
                             msg.linear.x = linear_vel
                             msg.angular.z = (0.5 - self.person_x) * angular_vel
@@ -106,7 +120,9 @@ class PoseEstimationNode(Node):
                             # Move backward
                             msg.linear.x = 0.0
                             msg.angular.z = 0.0
-
+                        elif self.buttons[0] != 1:
+                            msg.linear.x = 0.0
+                            msg.angular.z = 0.0         
                         self.publisher_.publish(msg)
 
                     else:
@@ -115,8 +131,18 @@ class PoseEstimationNode(Node):
                         msg = Twist()
                         msg.linear.x = 0.0
                         msg.angular.z = 0.0
+                        # Check if the joy button is pressed
+                        if self.buttons[0] == 1:  # Check for button press
+                            # Stop the robot
+                            msg = Twist()
+                            msg.linear.x = 0.0
+                            msg.angular.z = 0.0
+                            self.publisher_.publish(msg)
+                        elif self.depth_at_person < desired_distance:
+                            # Move backward
+                            msg.linear.x = 0.0
+                            msg.angular.z = 0.0
                         self.publisher_.publish(msg)
-
                 except Exception as e:
                     print("Exception:", e)
 

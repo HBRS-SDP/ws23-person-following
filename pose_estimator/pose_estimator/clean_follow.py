@@ -28,13 +28,12 @@ class PoseEstimationNode(Node):
             LaserScan,
             '/scan',
             self.scan_callback,
-            10
-        )
+            10)
 
         self.safe_min_range = 0.25
         self.person_x = None
         self.depth_at_person = None
-        self.point_at_min_dist = None
+        self.point_at_min_dist = 0.
         # Create a subscriber to receive joystick input
         self.joy_subscription = self.create_subscription(
             Joy,
@@ -42,22 +41,20 @@ class PoseEstimationNode(Node):
             self.joy_callback,
             10
         )
+        self.ranges=None
     def joy_callback(self, joy_msg):
         # Process joystick input here
         # Example: Extract joystick axes and buttons
         self.buttons = joy_msg.buttons
 
 
-    def scan_callback(self, msg):
+    def scan_callback(self, scan_msg):
         # Use laser scan data for collision avoidance
-        self.ranges = msg.ranges
-        if self.ranges:
-            laser = np.array(self.ranges)
-            laser = np.nan_to_num(laser, nan=0.0)
-            laser[laser <= 0.02] = 1.0
-            self.point_at_min_dist = min(laser)
+        self.ranges = scan_msg.ranges
+  
+        self.run(self.ranges)
 
-    def run(self):
+    def run(self,ranges):
         with self.mp_pose.Pose(min_detection_confidence=0.4, min_tracking_confidence=0.4) as pose:
             while rclpy.ok():
                 # Wait for a frame from RealSense camera
@@ -81,6 +78,10 @@ class PoseEstimationNode(Node):
                 image.flags.writeable = True
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
+                laser = np.array(self.ranges)
+                laser = np.nan_to_num(laser, nan=0.0)
+                laser[laser <= 0.02] = 1.0
+                self.point_at_min_dist = min(laser)
 
                 # Extract landmarks
                 try:
@@ -99,14 +100,15 @@ class PoseEstimationNode(Node):
                         desired_distance = 1.0
                         linear_vel = 0.4
                         angular_vel = 0.65
+                        print('point--',self.point_at_min_dist)
 
-                        # if self.point_at_min_dist < self.safe_min_range:
-                        #     msg.linear.x = 0.0
-                        #     msg.angular.z = 0.0
-                        #     self.publisher_.publish(msg)
-                        #     print("Avoiding obstacle")
+                        if self.point_at_min_dist < self.safe_min_range:
+                            msg.linear.x = 0.0
+                            msg.angular.z = 0.0
+                            self.publisher_.publish(msg)
+                            print("Avoiding collision", self.point_at_min_dist)
 
-                        if self.depth_at_person > desired_distance:
+                        elif self.depth_at_person > desired_distance:
                             # Move forward
                             msg.linear.x = linear_vel
                             msg.angular.z = (0.5 - self.person_x) * angular_vel
@@ -144,7 +146,7 @@ class PoseEstimationNode(Node):
                             msg.angular.z = 0.0
                         self.publisher_.publish(msg)
                 except Exception as e:
-                    print("Exception:", e)
+                    print("Exception-", e)
 
                 # Render detections
                 self.mp_drawing.draw_landmarks(
@@ -164,7 +166,6 @@ class PoseEstimationNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     pose_estimation_node = PoseEstimationNode()
-    pose_estimation_node.run()
     rclpy.spin(pose_estimation_node)
     pose_estimation_node.destroy_node()
     rclpy.shutdown()

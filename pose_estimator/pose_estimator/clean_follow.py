@@ -82,83 +82,90 @@ class PoseEstimationNode(Node):
                 laser = np.nan_to_num(laser, nan=0.0)
                 laser[laser <= 0.02] = 1.0
                 self.point_at_min_dist = min(laser)
+      
+                if self.point_at_min_dist < self.safe_min_range:
+                    msg.linear.x = 0.0
+                    msg.angular.z = 0.0
+                    self.publisher_.publish(msg)
+                    print("Avoiding collision", self.point_at_min_dist)
 
-                # Extract landmarks
-                try:
-                    landmarks = results.pose_landmarks.landmark
+                else:
+                    # Extract landmarks
+                    try:
+                        landmarks = results.pose_landmarks.landmark
 
-                    left_hip = landmarks[mp.solutions.pose.PoseLandmark.LEFT_HIP]
-                    right_hip = landmarks[mp.solutions.pose.PoseLandmark.RIGHT_HIP]
+                        left_hip = landmarks[mp.solutions.pose.PoseLandmark.LEFT_HIP]
+                        right_hip = landmarks[mp.solutions.pose.PoseLandmark.RIGHT_HIP]
 
-                    if landmarks:
-                        self.person_x = (left_hip.x + right_hip.x) / 2
-                        width, height = image.shape[1], image.shape[0]
-                        center_x, center_y = width // 2, height // 2
-                        self.depth_at_person = depth_frame.get_distance(center_x, center_y)
+                        if landmarks:
+                            self.person_x = (left_hip.x + right_hip.x) / 2
+                            width, height = image.shape[1], image.shape[0]
+                            center_x, center_y = width // 2, height // 2
+                            self.depth_at_person = depth_frame.get_distance(center_x, center_y)
 
-                        msg = Twist()
-                        desired_distance = 1.0
-                        linear_vel = 0.4
-                        angular_vel = 0.65
-                        print('point--',self.point_at_min_dist)
+                            msg = Twist()
+                            desired_distance = 1.0
+                            linear_vel = 0.4
+                            angular_vel = 0.65
+                            print('point--',self.point_at_min_dist)
 
-                        if self.point_at_min_dist < self.safe_min_range:
-                            msg.linear.x = 0.0
-                            msg.angular.z = 0.0
+                            if self.point_at_min_dist < self.safe_min_range:
+                                msg.linear.x = 0.0
+                                msg.angular.z = 0.0
+                                self.publisher_.publish(msg)
+                                print("Avoiding collision", self.point_at_min_dist)
+
+                            elif self.depth_at_person > desired_distance:
+                                # Move forward
+                                msg.linear.x = linear_vel
+                                msg.angular.z = (0.5 - self.person_x) * angular_vel
+
+                            elif abs(self.depth_at_person - desired_distance) <= 0.1:
+                                # Stop at desired distance
+                                msg.linear.x = 0.0
+                                msg.angular.z = 0.0
+
+                            elif self.depth_at_person < desired_distance:
+                                # Move backward
+                                msg.linear.x = 0.0
+                                msg.angular.z = 0.0
+                            elif self.buttons[0] != 1:
+                                msg.linear.x = 0.0
+                                msg.angular.z = 0.0         
                             self.publisher_.publish(msg)
-                            print("Avoiding collision", self.point_at_min_dist)
 
-                        elif self.depth_at_person > desired_distance:
-                            # Move forward
-                            msg.linear.x = linear_vel
-                            msg.angular.z = (0.5 - self.person_x) * angular_vel
-
-                        elif abs(self.depth_at_person - desired_distance) <= 0.1:
-                            # Stop at desired distance
-                            msg.linear.x = 0.0
-                            msg.angular.z = 0.0
-
-                        elif self.depth_at_person < desired_distance:
-                            # Move backward
-                            msg.linear.x = 0.0
-                            msg.angular.z = 0.0
-                        elif self.buttons[0] != 1:
-                            msg.linear.x = 0.0
-                            msg.angular.z = 0.0         
-                        self.publisher_.publish(msg)
-
-                    else:
-                        print("No person detected!")
-                        # Stop the robot if no person detected
-                        msg = Twist()
-                        msg.linear.x = 0.0
-                        msg.angular.z = 0.0
-                        # Check if the joy button is pressed
-                        if self.buttons[0] == 1:  # Check for button press
-                            # Stop the robot
+                        else:
+                            print("No person detected!")
+                            # Stop the robot if no person detected
                             msg = Twist()
                             msg.linear.x = 0.0
                             msg.angular.z = 0.0
+                            # Check if the joy button is pressed
+                            if self.buttons[0] == 1:  # Check for button press
+                                # Stop the robot
+                                msg = Twist()
+                                msg.linear.x = 0.0
+                                msg.angular.z = 0.0
+                                self.publisher_.publish(msg)
+                            elif self.depth_at_person < desired_distance:
+                                # Move backward
+                                msg.linear.x = 0.0
+                                msg.angular.z = 0.0
                             self.publisher_.publish(msg)
-                        elif self.depth_at_person < desired_distance:
-                            # Move backward
-                            msg.linear.x = 0.0
-                            msg.angular.z = 0.0
-                        self.publisher_.publish(msg)
-                except Exception as e:
-                    print("Exception-", e)
+                    except Exception as e:
+                        print("Exception-", e)
 
-                # Render detections
-                self.mp_drawing.draw_landmarks(
-                    image, results.pose_landmarks, mp.solutions.pose.POSE_CONNECTIONS,
-                    self.mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
-                    self.mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
-                )
+                    # Render detections
+                    self.mp_drawing.draw_landmarks(
+                        image, results.pose_landmarks, mp.solutions.pose.POSE_CONNECTIONS,
+                        self.mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+                        self.mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
+                    )
 
-                cv2.imshow('Mediapipe Feed', image)
+                    cv2.imshow('Mediapipe Feed', image)
 
-                if cv2.waitKey(10) & 0xFF == ord('q'):
-                    break
+                    if cv2.waitKey(10) & 0xFF == ord('q'):
+                        break
 
             self.pipeline.stop()
             cv2.destroyAllWindows()

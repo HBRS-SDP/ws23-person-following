@@ -1,0 +1,31 @@
+Sure, I'll explain the code functions in detail:
+
+1. **Initialization** (`__init__`):
+   - Initializes the ROS node named 'pose_estimation_node'.
+   - Sets up MediaPipe Pose Detection (`mp_pose`) and Drawing Utilities (`mp_drawing`).
+   - Configures the RealSense pipeline to receive color and depth streams.
+   - Creates a publisher to control the robot's movement (`/cmd_vel` topic).
+   - Subscribes to the LaserScan topic (`/scan`) to receive laser scan data for collision avoidance.
+   - Initializes variables such as safe_min_range, person_x, depth_at_person, and ranges.
+
+2. **Joystick Callback** (`joy_callback`):
+   - Receives joystick input through the '/joy' topic and processes the received data.
+   - Extracts joystick buttons and axes data for further use.
+
+3. **Scan Callback** (`scan_callback`):
+   - Receives LaserScan data (`scan_msg`) and assigns it to the `ranges` variable.
+
+4. **Run Function** (`run`):
+   - Uses MediaPipe Pose Detection to estimate the pose of a person.
+   - Processes RealSense camera frames to detect a person's pose landmarks.
+   - Handles laser scan data for collision avoidance by checking the minimum distance (`point_at_min_dist`) in the received laser scan data.
+   - Controls the robot's movement based on pose detection, distance from the person, and laser scan data.
+   - Publishes Twist messages (`msg`) to control the robot's linear and angular velocities (`/cmd_vel` topic).
+
+5. **Main Function** (`main`):
+   - Initializes the ROS Python client library (`rclpy`).
+   - Creates an instance of the `PoseEstimationNode`.
+   - Spins the `PoseEstimationNode` to keep the node running and responding to ROS messages.
+   - Upon program termination, destroys the node and shuts down the ROS client library.
+
+The code essentially integrates RealSense camera frames, MediaPipe Pose Detection, LaserScan data for collision avoidance, joystick input processing, and robot movement control based on the detected person's pose and collision avoidance criteria. The robot moves towards the person while avoiding collisions with objects detected by the laser scanner.

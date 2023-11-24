@@ -1,4 +1,3 @@
-Sure, I'll explain the code functions in detail:
 
 1. **Initialization** (`__init__`):
    - Initializes the ROS node named 'pose_estimation_node'.

@@ -8,6 +8,8 @@ import pyrealsense2 as rs
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Joy
+from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSDurabilityPolicy
+
 
 class PoseEstimationNode(Node):
     def __init__(self):
@@ -28,7 +30,12 @@ class PoseEstimationNode(Node):
             LaserScan,
             '/scan',
             self.scan_callback,
-            10)
+            QoSProfile(
+                depth=10,  # Depth of the QoS history, how many samples to keep
+                history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,  # Keep last N samples
+                durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL  # Store last samples locally
+            )
+        )
 
         self.safe_min_range = 0.25
         self.person_x = None
@@ -55,6 +62,7 @@ class PoseEstimationNode(Node):
         self.run(self.ranges)
 
     def run(self,ranges):
+        
         with self.mp_pose.Pose(min_detection_confidence=0.4, min_tracking_confidence=0.4) as pose:
             while rclpy.ok():
                 # Wait for a frame from RealSense camera
@@ -77,6 +85,9 @@ class PoseEstimationNode(Node):
                 # Recolor back to BGR
                 image.flags.writeable = True
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+                # scan_msg = self.create_subscription(LaserScan, '/scan', QoSProfile(depth=10)).get_msg()
+                # self.ranges = scan_msg.ranges
 
                 laser = np.array(self.ranges)
                 laser = np.nan_to_num(laser, nan=0.0)

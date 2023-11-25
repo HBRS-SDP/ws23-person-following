@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 2.8)
+project( intel )
+find_package( OpenCV REQUIRED )
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+add_executable(pose_estimator rs_measure.cpp )
+target_link_libraries(pose_estimator ${OpenCV_LIBS} )

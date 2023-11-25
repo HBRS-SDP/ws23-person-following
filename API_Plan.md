@@ -35,156 +35,47 @@ The software package is delivered as a Python script structured as a ROS package
 
 ---
 
-### API Descriptions:
+## Pose Estimation and Navigation API Documentation
 
-#### Inputs/Outputs:
+### `PoseEstimationNode`
 
-- **ROS Topics:**
-  - **Inputs:**
-    - Color and depth streams from the RealSense camera.
-    - Laser scan data from the `/scan` topic.
-  - **Outputs:**
-    - `Twist` messages published to the '/cmd_vel' topic for robot control.
+A ROS node responsible for pose estimation and navigation using RealSense camera data and joystick input.
 
-#### Custom Data Structures:
+#### Attributes:
+- `publisher_`: Publisher object for sending robot movement commands.
+- `scan_subscription`: Subscription object for receiving laser scan data.
+- `joy_subscription`: Subscription object for receiving joystick input.
+- `safe_min_range`: Float - Defines the safe minimum range for collision avoidance.
 
-- **ROS Messages:**
-  - The `Twist` message is used to convey linear and angular velocities for robot control.
-  - Laser scan data is received in the standard `LaserScan` message format.
+#### Methods:
+- `joy_callback(joy_msg)`: Processes joystick input.
+- `scan_callback(scan_msg)`: Handles laser scan data for collision avoidance.
+- `run(ranges)`: Executes the pose estimation and navigation loop using RealSense camera data and laser scans.
 
-- **Data Types:**
-  - Pose landmarks and depth information are represented using appropriate data types from the `mediapipe` and `pyrealsense2` libraries.
-  - Laser scan data is processed using standard Python and ROS data types.
+### Custom Data Structures:
 
-- **Classes:**
-  - The script defines a class `PoseEstimationNode` that encapsulates the functionality of the pose estimation node.
-  - It also utilizes classes from the `mediapipe` and `pyrealsense2` libraries.
-  - Additional classes or functions can be added for laser-based obstacle avoidance.
+#### ROS Messages:
+- `Twist` message: Represents linear and angular velocities for robot control.
+- Laser scan data: Received in the standard `LaserScan` message format.
 
----
+#### Data Types:
+- Pose landmarks and depth information: Utilizes appropriate data types from the `mediapipe` and `pyrealsense2` libraries.
+- Laser scan data processing: Relies on standard Python and ROS data types.
 
-### Pose Estimation and Navigation API Documentation
+### Additional Classes and Functions:
 
-#### `PoseEstimationNode`
-
-A ROS node handling pose estimation and navigation.
-
-- **Attributes:**
-  - `publisher_`: Publisher object for robot movement commands
-  - `scan_subscription`: Subscription object for laser scan data
-  - `joy_subscription`: Subscription object for joystick input
-  - `safe_min_range`: Float - Safe minimum range for collision avoidance
-  
-- **Methods:**
-  - `joy_callback(joy_msg)`: Processes joystick input
-  - `scan_callback(scan_msg)`: Uses laser scan data for collision avoidance
-  - `run(ranges)`: Executes the pose estimation and navigation loop
-
----
-
-#### `follow_motion(depth_at_person, person_x)`
-
-A class handling following a detected person.
-
-- **Parameters:**
-  - `depth_at_person`: Float - Depth at detected person
-  - `person_x`: Float - X-coordinate of the detected person
-  
-- **Methods:**
-  - `setup(**kwargs)`: Initializes the behavior
-  - `update()`: Updates the motion based on the distance to the person
-
----
-
-#### `move_to_wall(slope_angle)`
-
-A class for moving the robot towards a wall.
-
-- **Parameters:**
-  - `slope_angle`: Float - Angle of the wall relative to the robot
-  
-- **Methods:**
-  - `setup(**kwargs)`: Initializes the behavior
-  - `update()`: Moves the robot towards the wall
-
----
-
-#### `align_to_wall(slope_angle, align)`
-
-A class for aligning the robot parallel to the wall.
-
-- **Parameters:**
-  - `slope_angle`: Float - Angle of the wall relative to the robot
-  - `align`: Float - Alignment angle
-  
-- **Methods:**
-  - `setup(**kwargs)`: Initializes the behavior
-  - `update()`: Adjusts the robot's orientation to align with the wall
-
----
-
-#### `follow_wall(last_pos, rotation_direction, process_laser, point_min_dist, dist, align)`
-
-A class for following along a wall.
-
-- **Parameters:**
-  - `last_pos`: Float - Last known position of the detected person
-  - `rotation_direction`: Float - Direction of rotation
-  - `process_laser`: Numpy array - Laser scan data
-  - `point_min_dist`: Float - Minimum distance from the point
-  - `dist`: Float - Distance to the point
-  - `align`: Float - Alignment angle
-  
-- **Methods:**
-  - `setup(**kwargs)`: Initializes the behavior
-  - `update()`: Controls robot movement while following the wall
-
----
-
-#### `run_online(process_laser, sigma, k)`
-
-This function converts polar to Cartesian coordinates and performs online line detection.
-
-- **Parameters:**
-  - `process_laser`: Numpy array - Laser scan data
-  - `sigma`: Float - Standard deviation for filtering
-  - `k`: Integer - Parameter for line detection
-  
-- **Returns:** 
-  - If lines found, returns distance (`d`) and slope (`m`) of the nearest line; otherwise, returns 0.
-
----
-
-#### `main()`
-
-Main function to initialize the ROS node and run the pose estimation and navigation functionality.
-
-- **Parameters:** None
-- **Returns:** None
-
-#### Custom Data Structures:
-
-- **ROS Messages:**
-  - The `Twist` message is used to convey linear and angular velocities for robot control.
-  - Laser scan data is received in the standard `LaserScan` message format.
-
-- **Data Types:**
-  - Pose landmarks and depth information are represented using appropriate data types from the `mediapipe` and `pyrealsense2` libraries.
-  - Laser scan data is processed using standard Python and ROS data types.
-
-- **Classes:**
-  - The script defines a class `PoseEstimationNode` that encapsulates the functionality of the pose estimation node.
-  - It also utilizes classes from the `mediapipe` and `pyrealsense2` libraries.
-  - Additional classes or functions can be added for laser-based obstacle avoidance.
+- `follow_motion(depth_at_person, person_x)`: Handles following a detected person.
+- `move_to_wall(slope_angle)`: Facilitates moving the robot towards a wall.
+- `align_to_wall(slope_angle, align)`: Manages aligning the robot parallel to the wall.
+- `follow_wall(last_pos, rotation_direction, process_laser, point_min_dist, dist, align)`: Handles the process of following along a wall.
+- `run_online(process_laser, sigma, k)`: Converts polar to Cartesian coordinates and performs online line detection.
+- `main()`: Initializes the ROS node and executes pose estimation and navigation functionality.
 
 ### Additional Considerations:
 
 - **Error Handling:**
-  - The script should handle errors gracefully, such as absence of valid frames, pose estimation failures, or issues with laser scan data.
-  - Errors should be logged or printed for debugging purposes.
-
+  - The script should handle exceptions gracefully, particularly concerning missing frames, pose estimation failures, or issues with laser scan data. Errors should be logged or printed for debugging purposes.
+  
 - **Documentation:**
-  - In-code documentation should be provided using comments.
-  - Update the user manual to include information about laser-based obstacle avoidance and any additional parameters or configurations.
-
-
+  - In-code documentation using comments is essential for understanding and maintaining the codebase.
+  - Ensure the user manual is updated to include information about laser-based obstacle avoidance and any additional parameters or configurations.

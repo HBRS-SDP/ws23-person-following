@@ -68,7 +68,7 @@ A ROS node responsible for pose estimation and navigation using RealSense camera
 - `move_to_wall(slope_angle)`: Facilitates moving the robot towards a wall.
 - `align_to_wall(slope_angle, align)`: Manages aligning the robot parallel to the wall.
 - `follow_wall(last_pos, rotation_direction, process_laser, point_min_dist, dist, align)`: Handles the process of following along a wall.
-- `run_online(process_laser, sigma, k)`: Converts polar to Cartesian coordinates and performs online line detection.
+- `run_online(process_laser, sigma, k)`: Converts polar to Cartesian coordinates and performs an algorithm to find the nearest wall.
 - `main()`: Initializes the ROS node and executes pose estimation and navigation functionality.
 
 ### Additional Considerations:

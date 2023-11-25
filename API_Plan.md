@@ -33,6 +33,8 @@ The software package is delivered as a Python script structured as a ROS package
   - The operator can trigger the termination of the script by pressing 'q' in the 'Mediapipe Feed' window.
   - Upon termination, the RealSense pipeline stops, and the visualization window is closed.
 
+---
+
 ### API Descriptions:
 
 #### Inputs/Outputs:
@@ -43,6 +45,122 @@ The software package is delivered as a Python script structured as a ROS package
     - Laser scan data from the `/scan` topic.
   - **Outputs:**
     - `Twist` messages published to the '/cmd_vel' topic for robot control.
+
+#### Custom Data Structures:
+
+- **ROS Messages:**
+  - The `Twist` message is used to convey linear and angular velocities for robot control.
+  - Laser scan data is received in the standard `LaserScan` message format.
+
+- **Data Types:**
+  - Pose landmarks and depth information are represented using appropriate data types from the `mediapipe` and `pyrealsense2` libraries.
+  - Laser scan data is processed using standard Python and ROS data types.
+
+- **Classes:**
+  - The script defines a class `PoseEstimationNode` that encapsulates the functionality of the pose estimation node.
+  - It also utilizes classes from the `mediapipe` and `pyrealsense2` libraries.
+  - Additional classes or functions can be added for laser-based obstacle avoidance.
+
+---
+
+### Pose Estimation and Navigation API Documentation
+
+#### `PoseEstimationNode`
+
+A ROS node handling pose estimation and navigation.
+
+- **Attributes:**
+  - `publisher_`: Publisher object for robot movement commands
+  - `scan_subscription`: Subscription object for laser scan data
+  - `joy_subscription`: Subscription object for joystick input
+  - `safe_min_range`: Float - Safe minimum range for collision avoidance
+  
+- **Methods:**
+  - `joy_callback(joy_msg)`: Processes joystick input
+  - `scan_callback(scan_msg)`: Uses laser scan data for collision avoidance
+  - `run(ranges)`: Executes the pose estimation and navigation loop
+
+---
+
+#### `follow_motion(depth_at_person, person_x)`
+
+A class handling following a detected person.
+
+- **Parameters:**
+  - `depth_at_person`: Float - Depth at detected person
+  - `person_x`: Float - X-coordinate of the detected person
+  
+- **Methods:**
+  - `setup(**kwargs)`: Initializes the behavior
+  - `update()`: Updates the motion based on the distance to the person
+
+---
+
+#### `move_to_wall(slope_angle)`
+
+A class for moving the robot towards a wall.
+
+- **Parameters:**
+  - `slope_angle`: Float - Angle of the wall relative to the robot
+  
+- **Methods:**
+  - `setup(**kwargs)`: Initializes the behavior
+  - `update()`: Moves the robot towards the wall
+
+---
+
+#### `align_to_wall(slope_angle, align)`
+
+A class for aligning the robot parallel to the wall.
+
+- **Parameters:**
+  - `slope_angle`: Float - Angle of the wall relative to the robot
+  - `align`: Float - Alignment angle
+  
+- **Methods:**
+  - `setup(**kwargs)`: Initializes the behavior
+  - `update()`: Adjusts the robot's orientation to align with the wall
+
+---
+
+#### `follow_wall(last_pos, rotation_direction, process_laser, point_min_dist, dist, align)`
+
+A class for following along a wall.
+
+- **Parameters:**
+  - `last_pos`: Float - Last known position of the detected person
+  - `rotation_direction`: Float - Direction of rotation
+  - `process_laser`: Numpy array - Laser scan data
+  - `point_min_dist`: Float - Minimum distance from the point
+  - `dist`: Float - Distance to the point
+  - `align`: Float - Alignment angle
+  
+- **Methods:**
+  - `setup(**kwargs)`: Initializes the behavior
+  - `update()`: Controls robot movement while following the wall
+
+---
+
+#### `run_online(process_laser, sigma, k)`
+
+This function converts polar to Cartesian coordinates and performs online line detection.
+
+- **Parameters:**
+  - `process_laser`: Numpy array - Laser scan data
+  - `sigma`: Float - Standard deviation for filtering
+  - `k`: Integer - Parameter for line detection
+  
+- **Returns:** 
+  - If lines found, returns distance (`d`) and slope (`m`) of the nearest line; otherwise, returns 0.
+
+---
+
+#### `main()`
+
+Main function to initialize the ROS node and run the pose estimation and navigation functionality.
+
+- **Parameters:** None
+- **Returns:** None
 
 #### Custom Data Structures:
 
@@ -70,140 +188,3 @@ The software package is delivered as a Python script structured as a ROS package
   - Update the user manual to include information about laser-based obstacle avoidance and any additional parameters or configurations.
 
 
-### Test Case 1:
-
-**Given:**
-- The robot is powered on.
-- The ROS environment is set up correctly.
-- A person is within the field of view of the RealSense camera.
-
-**When:**
-- The `main()` function is executed, running the `PoseEstimationNode`.
-
-**Then:**
-- The robot should initiate the RealSense pipeline.
-- Pose estimation should be performed on the detected person.
-- The robot should publish Twist messages to '/cmd_vel' based on the person's position and depth information.
-- Calculate and print the expected turn.
-- The robot should move forward if the person is farther than the desired distance, stop if at the desired distance, and move backward if closer than the desired distance.
-
-### Test Case 2:
-
-**Given:**
-- The robot is powered on.
-- The ROS environment is set up correctly.
-- No person is within the field of view of the RealSense camera.
-
-**When:**
-- The `main()` function is executed, running the `PoseEstimationNode`.
-
-**Then:**
-- The robot should initiate the RealSense pipeline.
-- Since no person is detected, print "No person detected!".
-- The robot should not publish any Twist messages.
-
-### Test Case 3:
-
-**Given:**
-- The robot is powered on.
-- The ROS environment is set up correctly.
-- The RealSense camera does not provide valid color or depth frames.
-
-**When:**
-- The `main()` function is executed, running the `PoseEstimationNode`.
-
-**Then:**
-- The robot should handle the absence of valid frames gracefully.
-- Pose estimation should not be performed.
-- The robot should not publish any Twist messages.
-
-### Test Case 4:
-
-**Given:**
-- The robot is powered on.
-- The ROS environment is set up correctly.
-- The operator triggers the termination of the script by pressing 'q' in the 'Mediapipe Feed' window.
-
-**When:**
-- The `main()` function is executed, running the `PoseEstimationNode`.
-
-**Then:**
-- The robot should stop the RealSense pipeline and close the 'Mediapipe Feed' window when the 'q' key is pressed.
-
-### Test Case 5:
-
-**Given:**
-- The robot is powered on.
-- The ROS environment is set up correctly.
-- The person is within the field of view of the RealSense camera.
-- Depth information is not available.
-
-**When:**
-- The `main()` function is executed, running the `PoseEstimationNode`.
-
-**Then:**
-- The robot should handle the absence of depth information gracefully.
-- Print a message indicating the absence of depth information.
-- The robot should not publish any Twist messages.
-
-### Test Case 6:
-
-**Given:**
-- The robot is powered on.
-- The ROS environment is set up correctly.
-- The person is within the field of view of the RealSense camera.
-- Pose estimation fails.
-
-**When:**
-- The `main()` function is executed, running the `PoseEstimationNode`.
-
-**Then:**
-- The robot should handle pose estimation failures gracefully.
-- Print a message indicating the failure.
-- The robot should not publish any Twist messages.
-
-### Test Case 7:
-
-**Given:**
-- The robot is powered on.
-- The ROS environment is set up correctly.
-- Multiple persons are within the field of view of the RealSense camera.
-
-**When:**
-- The `main()` function is executed, running the `PoseEstimationNode`.
-
-**Then:**
-- The robot should handle multiple persons within the frame.
-- Select and follow the closest person.
-- Print appropriate messages regarding the selected person's position and movement.
-
-### Test Case 8:
-
-**Given:**
-- The robot is powered on.
-- The ROS environment is set up correctly.
-- The person is within the field of view of the RealSense camera.
-- The person moves dynamically.
-
-**When:**
-- The `main()` function is executed, running the `PoseEstimationNode`.
-
-**Then:**
-- The robot should continuously update the person's position based on real-time pose estimation.
-- Adjust its movement accordingly and continuously print the updated expected turn.
-
-### Test Case 9:
-
-**Given:**
-- The robot is powered on.
-- The ROS environment is set up correctly.
-- The person is initially outside the field of view and enters later.
-
-**When:**
-- The `main()` function is executed, running the `PoseEstimationNode`.
-
-**Then:**
-- The robot should handle the dynamic entry of a person into the frame.
-- Start tracking the person's movements once detected and print relevant information.
-
-These test cases cover a range of scenarios to ensure robustness and functionality in different situations. Adjust specifics based on your system's behavior and requirements.

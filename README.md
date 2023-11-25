@@ -1,12 +1,9 @@
 # Person Following Codebase
 ## Software Development Project
  
-Base code for ROS2 based person following robot involving RGB-D camera, laser scanner
-
+Base code for ROS2 based person following robot involving RGB-D camera, laser scanner <br>
 Milestone Presentations [Link](https://drive.google.com/drive/folders/1fSUbau2GBS1j4a7OnIZlPYnxty2QNiYR?usp=drive_link) <br>
-
-[Deliverables for API ](https://github.com/HBRS-SDP/ws23-person-following/blob/main/API_Plan.md) 
-
+[How to access the API ?](https://github.com/HBRS-SDP/ws23-person-following/edit/testing/README.md)
 ### Technologies
 - Robot Platform: Robile3
 - OS: Ubuntu 22.04 LTS
@@ -15,7 +12,7 @@ Milestone Presentations [Link](https://drive.google.com/drive/folders/1fSUbau2GB
 - Libraries: OpenCV, numpy, mediapipe
 
 ### Setup Installation 
-#### Prerequisites
+Prerequisites
 - opencv
 - mediapipe
 - pyrealsense2

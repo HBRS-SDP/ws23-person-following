@@ -8,8 +8,8 @@ import pyrealsense2 as rs
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Joy
-from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSDurabilityPolicy
 
+from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSDurabilityPolicy
 
 class PoseEstimationNode(Node):
     def __init__(self):
@@ -26,16 +26,12 @@ class PoseEstimationNode(Node):
 
         # Create a publisher to control the robot's movement
         self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
+
         self.scan_subscription = self.create_subscription(
             LaserScan,
             '/scan',
             self.scan_callback,
-            QoSProfile(
-                depth=10,  # Depth of the QoS history, how many samples to keep
-                history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,  # Keep last N samples
-                durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL  # Store last samples locally
-            )
-        )
+            10)
 
         self.safe_min_range = 0.25
         self.person_x = None
@@ -58,128 +54,127 @@ class PoseEstimationNode(Node):
     def scan_callback(self, scan_msg):
         # Use laser scan data for collision avoidance
         self.ranges = scan_msg.ranges
-  
-        self.run(self.ranges)
+        self.run()
 
-    def run(self,ranges):
-        
+    def run(self):
         with self.mp_pose.Pose(min_detection_confidence=0.4, min_tracking_confidence=0.4) as pose:
             while rclpy.ok():
-                # Wait for a frame from RealSense camera
-                frames = self.pipeline.wait_for_frames()
-                color_frame = frames.get_color_frame()
-                depth_frame = frames.get_depth_frame()
-                if not color_frame or not depth_frame:
-                    continue
-
-                # Convert the color frame to a NumPy array
-                color_image = np.asanyarray(color_frame.get_data())
-
-                # Recolor image to RGB
-                image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
-                image.flags.writeable = False
-
-                # Make detection
-                results = pose.process(image)
-
-                # Recolor back to BGR
-                image.flags.writeable = True
-                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
                 # scan_msg = self.create_subscription(LaserScan, '/scan', QoSProfile(depth=10)).get_msg()
                 # self.ranges = scan_msg.ranges
+                # Wait for a frame from RealSense camera
+                # frames = self.pipeline.wait_for_frames()
+                # color_frame = frames.get_color_frame()
+                # depth_frame = frames.get_depth_frame()
+                # if not color_frame or not depth_frame:
+                #     continue
+
+                # # Convert the color frame to a NumPy array
+                # color_image = np.asanyarray(color_frame.get_data())
+
+                # # Recolor image to RGB
+                # image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
+                # image.flags.writeable = False
+
+                # # Make detection
+                # results = pose.process(image)
+
+                # # Recolor back to BGR
+                # image.flags.writeable = True
+                # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
                 laser = np.array(self.ranges)
                 laser = np.nan_to_num(laser, nan=0.0)
                 laser[laser <= 0.02] = 1.0
                 self.point_at_min_dist = min(laser)
+                print("Min point: ", self. point_at_min_dist)
       
-                if self.point_at_min_dist < self.safe_min_range:
-                    msg.linear.x = 0.0
-                    msg.angular.z = 0.0
-                    self.publisher_.publish(msg)
-                    print("Avoiding collision", self.point_at_min_dist)
+            #     if self.point_at_min_dist < self.safe_min_range:
+            #         msg.linear.x = 0.0
+            #         msg.angular.z = 0.0
+            #         self.publisher_.publish(msg)
+            #         print("Avoiding collision", self.point_at_min_dist)
 
-                else:
-                    # Extract landmarks
-                    try:
-                        landmarks = results.pose_landmarks.landmark
+            #     else:
+            #         # Extract landmarks
+            #         try:
+            #             landmarks = results.pose_landmarks.landmark
 
-                        left_hip = landmarks[mp.solutions.pose.PoseLandmark.LEFT_HIP]
-                        right_hip = landmarks[mp.solutions.pose.PoseLandmark.RIGHT_HIP]
+            #             left_hip = landmarks[mp.solutions.pose.PoseLandmark.LEFT_HIP]
+            #             right_hip = landmarks[mp.solutions.pose.PoseLandmark.RIGHT_HIP]
 
-                        if landmarks:
-                            self.person_x = (left_hip.x + right_hip.x) / 2
-                            width, height = image.shape[1], image.shape[0]
-                            center_x, center_y = width // 2, height // 2
-                            self.depth_at_person = depth_frame.get_distance(center_x, center_y)
+            #             if landmarks:
+            #                 self.person_x = (left_hip.x + right_hip.x) / 2
+            #                 width, height = image.shape[1], image.shape[0]
+            #                 center_x, center_y = width // 2, height // 2
+            #                 self.depth_at_person = depth_frame.get_distance(center_x, center_y)
 
-                            msg = Twist()
-                            desired_distance = 1.0
-                            linear_vel = 0.4
-                            angular_vel = 0.65
-                            print('point--',self.point_at_min_dist)
+            #                 msg = Twist()
+            #                 desired_distance = 1.0
+            #                 linear_vel = 0.4
+            #                 angular_vel = 0.65
+            #                 print('point--',self.point_at_min_dist)
 
-                            if self.point_at_min_dist < self.safe_min_range:
-                                msg.linear.x = 0.0
-                                msg.angular.z = 0.0
-                                self.publisher_.publish(msg)
-                                print("Avoiding collision", self.point_at_min_dist)
+            #                 if self.point_at_min_dist < self.safe_min_range:
+            #                     msg.linear.x = 0.0
+            #                     msg.angular.z = 0.0
+            #                     self.publisher_.publish(msg)
+            #                     print("Avoiding collision", self.point_at_min_dist)
 
-                            elif self.depth_at_person > desired_distance:
-                                # Move forward
-                                msg.linear.x = linear_vel
-                                msg.angular.z = (0.5 - self.person_x) * angular_vel
+            #                 elif self.depth_at_person > desired_distance:
+            #                     # Move forward
+            #                     msg.linear.x = linear_vel
+            #                     msg.angular.z = (0.5 - self.person_x) * angular_vel
 
-                            elif abs(self.depth_at_person - desired_distance) <= 0.1:
-                                # Stop at desired distance
-                                msg.linear.x = 0.0
-                                msg.angular.z = 0.0
+            #                 elif abs(self.depth_at_person - desired_distance) <= 0.1:
+            #                     # Stop at desired distance
+            #                     msg.linear.x = 0.0
+            #                     msg.angular.z = 0.0
 
-                            elif self.depth_at_person < desired_distance:
-                                # Move backward
-                                msg.linear.x = 0.0
-                                msg.angular.z = 0.0
-                            elif self.buttons[0] != 1:
-                                msg.linear.x = 0.0
-                                msg.angular.z = 0.0         
-                            self.publisher_.publish(msg)
+            #                 elif self.depth_at_person < desired_distance:
+            #                     # Move backward
+            #                     msg.linear.x = 0.0
+            #                     msg.angular.z = 0.0
+            #                 elif self.buttons[0] != 1:
+            #                     msg.linear.x = 0.0
+            #                     msg.angular.z = 0.0         
+            #                 self.publisher_.publish(msg)
 
-                        else:
-                            print("No person detected!")
-                            # Stop the robot if no person detected
-                            msg = Twist()
-                            msg.linear.x = 0.0
-                            msg.angular.z = 0.0
-                            # Check if the joy button is pressed
-                            if self.buttons[0] == 1:  # Check for button press
-                                # Stop the robot
-                                msg = Twist()
-                                msg.linear.x = 0.0
-                                msg.angular.z = 0.0
-                                self.publisher_.publish(msg)
-                            elif self.depth_at_person < desired_distance:
-                                # Move backward
-                                msg.linear.x = 0.0
-                                msg.angular.z = 0.0
-                            self.publisher_.publish(msg)
-                    except Exception as e:
-                        print("Exception-", e)
+            #             else:
+            #                 print("No person detected!")
+            #                 # Stop the robot if no person detected
+            #                 msg = Twist()
+            #                 msg.linear.x = 0.0
+            #                 msg.angular.z = 0.0
+            #                 # Check if the joy button is pressed
+            #                 if self.buttons[0] == 1:  # Check for button press
+            #                     # Stop the robot
+            #                     msg = Twist()
+            #                     msg.linear.x = 0.0
+            #                     msg.angular.z = 0.0
+            #                     self.publisher_.publish(msg)
+            #                 elif self.depth_at_person < desired_distance:
+            #                     # Move backward
+            #                     msg.linear.x = 0.0
+            #                     msg.angular.z = 0.0
+            #                 self.publisher_.publish(msg)
+            #         except Exception as e:
+            #             print("Exception-", e)
 
-                    # Render detections
-                    self.mp_drawing.draw_landmarks(
-                        image, results.pose_landmarks, mp.solutions.pose.POSE_CONNECTIONS,
-                        self.mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
-                        self.mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
-                    )
+            #         # Render detections
+            #         self.mp_drawing.draw_landmarks(
+            #             image, results.pose_landmarks, mp.solutions.pose.POSE_CONNECTIONS,
+            #             self.mp_drawing.DrawingSpec(color=(245, 117, 66), thickness=2, circle_radius=2),
+            #             self.mp_drawing.DrawingSpec(color=(245, 66, 230), thickness=2, circle_radius=2)
+            #         )
 
-                    cv2.imshow('Mediapipe Feed', image)
+            #         cv2.imshow('Mediapipe Feed', image)
 
-                    if cv2.waitKey(10) & 0xFF == ord('q'):
-                        break
+            #         if cv2.waitKey(10) & 0xFF == ord('q'):
+            #             break
 
-            self.pipeline.stop()
-            cv2.destroyAllWindows()
+            # self.pipeline.stop()
+            # cv2.destroyAllWindows()
 
 def main(args=None):
     rclpy.init(args=args)

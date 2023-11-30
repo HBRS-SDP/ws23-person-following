@@ -165,15 +165,15 @@ class PoseEstimationNode(Node):
                             center_x, center_y = width // 2, height // 2
                             self.depth_at_person = depth_frame.get_distance(center_x, center_y)
                             #Triggering follow motion
-                            follow_motion(self.depth_at_person,self.person_x)
+                            FollowMotion(self.depth_at_person,self.person_x)
 
                         if landmarks is False and self.last_pos is not None:
                             #Move to wall
                             if self.blackboard.point_at_min_dist > self.safe_min_range+0.19:
-                                rotation_direction= move_to_wall(slope_angle)
+                                rotation_direction= MoveToWall(slope_angle)
                             #Align to wall
                             elif 1.0 > self.blackboard.point_at_min_dist > self.safe_min_range and align > ALIGN_THRES*1.2:
-                                align_to_wall(slope_angle,align,rotation_direction,laser,last_pos,point_min_dist,self.dist)
+                                AlignToWall(slope_angle,align,rotation_direction,laser,last_pos,point_min_dist,self.dist)
                         else:
                             msg= Twist()
                             msg.linear.x= 0.0
@@ -214,62 +214,35 @@ class PoseEstimationNode(Node):
 
 
 
-
-
-
-class follow_motion(depth_at_person, person_x):
-    def __init__(self, 
-                 topic_name1: str="/cmd_vel", 
-                 topic_name2: str="/joy"):
-        super(follow_motion, self).__init__()
-        # Set up topic name publish rotation commands
-        self.cmd_vel_topic = topic_name1
-        self.joy_topic = topic_name2
+class FollowMotion:
+    def __init__(self, depth_at_person, person_x, node):
         self.depth_at_person = depth_at_person
-        self.person_x= person_x
-
-
-    def setup(self, **kwargs):
-        self.logger.info("[FOLLOW PERSON MOTION] setting up follow motion behavior")
-
-        try:
-            self.node = kwargs['node']
-        except KeyError as e:
-            error_message = "didn't find 'node' in setup's kwargs [{}][{}]".format(self.qualified_name)
-            raise KeyError(error_message) from e  # 'direct cause' traceability
-
-        # Create publisher to publish rotation commands
-        self.cmd_vel_pub = self.node.create_publisher(
-            msg_type=Twist,
-            topic=self.cmd_vel_topic,
-        )
-
-        # Create publisher to override joystick commands
-        self.joy_pub = self.node.create_publisher(
-            msg_type=Joy,
-            topic=self.joy_topic,
-        )
+        self.person_x = person_x
+        self.node = node
         
-        self.feedback_message = "setup"
-        return True
-    
-    def update(self):
+        # Assuming this is available within the node class
+        self.publisher_ = self.node.create_publisher(Twist, '/cmd_vel', 10)
 
+    def setup(self):
+        # Setup method implementation if needed
+        pass
+
+    def update(self):
         msg = Twist()
         desired_distance = 1.0
         linear_vel = 0.4
         angular_vel = 0.65
-        expected_turn= (0.5 - self.person_x) * angular_vel
+        expected_turn = (0.5 - self.person_x) * angular_vel
 
-        print("Expected turn",expected_turn)
+        print("Expected turn", expected_turn)
 
         if self.depth_at_person > desired_distance:
             # Move forward
             msg.linear.x = linear_vel
             msg.angular.z = (0.5 - self.person_x) * angular_vel
-        
-        if self.depth_at_person == desired_distance:
-            # Move forward
+
+        elif self.depth_at_person == desired_distance:
+            # Stop
             msg.linear.x = 0.0
             msg.angular.z = 0.0
 
@@ -278,29 +251,19 @@ class follow_motion(depth_at_person, person_x):
             msg.linear.x = -linear_vel
 
         self.publisher_.publish(msg)
-   
 
-class move_to_wall(slope_angle):
 
-    def __init__(self, 
-                 topic_name: str="/cmd_vel"):
-        super(move_to_wall, self).__init__()
-
-        # Set up topic name publish rotation commands
+class MoveToWall:
+    def __init__(self, slope_angle, node, topic_name="/cmd_vel"):
+        self.slope_angle = slope_angle
+        self.node = node
         self.cmd_vel_topic = topic_name
-        self.slope_angle= slope_angle
     
-    def setup(self,**kwargs):
+    def setup(self):
         '''
         Setting up things which generally might require time to prevent delay in tree initialisation
         '''
         self.logger.info("[MOVE_TO_WALL] setting up Move to wall motion behavior")
-
-        try:
-            self.node = kwargs['node']
-        except KeyError as e:
-            error_message = "didn't find 'node' in setup's kwargs [{}][{}]".format(self.qualified_name)
-            raise KeyError(error_message) from e  # 'direct cause' traceability
 
         # Create publisher to publish rotation commands
         self.cmd_vel_pub = self.node.create_publisher(
@@ -311,19 +274,18 @@ class move_to_wall(slope_angle):
         return True 
    
     def update(self):
-        perp_ang=abs(self.slope_angle)
+        perp_ang = abs(self.slope_angle)
 
-        if perp_ang <=ALIGN_THRES:
+        if perp_ang <= ALIGN_THRES:
             print("Reached near a wall")
-        
             return rotation_direction
 
         else:            
             if self.slope_angle > 0.0:
-                rotation_direction = rotation_value # Clockwise rotation
+                rotation_direction = rotation_value  # Clockwise rotation
             else:
-                rotation_direction = -rotation_value # Counter-clockwise rotation
-            max_velocity= 0.30
+                rotation_direction = -rotation_value  # Counter-clockwise rotation
+            max_velocity = 0.30
             angular_velocity = max_velocity
             twist_msg = Twist()
             twist_msg.linear.x = 0.04
@@ -335,12 +297,12 @@ class move_to_wall(slope_angle):
 
     def terminate(self):
         '''
-        terminate() is trigerred once the execution of the behavior finishes, 
+        terminate() is triggered once the execution of the behavior finishes, 
         i.e. when the status changes from RUNNING to SUCCESS or FAILURE
         '''
         self.logger.info("[MOVE_TO_WALL] terminate: publishing zero angular velocity")
         twist_msg = Twist()
-        max_velocity= 0.30
+        max_velocity = 0.30
         twist_msg.linear.x = max_velocity
         twist_msg.linear.y = 0.
         twist_msg.angular.z = 0.
@@ -348,35 +310,31 @@ class move_to_wall(slope_angle):
         return None
 
 
-class align_to_wall(slope_angle,align,rotation_direction,laser, last_pos,point_min_dist,dist):
-
-    def __init__(self, topic_name1="/cmd_vel", direction: int=1):
-
-        # Set up topic name publish rotation commands
-        self.topic_name = topic_name1
-        self.slope_angle= slope_angle
-        self.align_ang= align
-        self.rot= rotation_direction
-        self.laser= laser
-        self.last_pos= last_pos
+class AlignToWall:
+    def __init__(self, slope_angle, align, rotation_direction, laser, last_pos, point_min_dist, dist, topic_name="/cmd_vel", direction=1):
+        self.slope_angle = slope_angle
+        self.align_ang = align
+        self.rot = rotation_direction
+        self.laser = laser
+        self.last_pos = last_pos
+        self.point_min_dist = point_min_dist
+        self.dist = dist
+        self.topic_name = topic_name
 
         # become a behaviour
-        super(align_to_wall, self).__init__()
-
+        super(AlignToWall, self).__init__()
 
     def setup(self, **kwargs):
         '''
         Setting up things which generally might require time to prevent delay in tree initialisation
         '''
-        
         self.logger.info("[align] setting up aligning behavior")
- 
+
         try:
             self.node = kwargs['node']
         except KeyError as e:
             error_message = "didn't find 'node' in setup's kwargs [{}][{}]".format(self.qualified_name)
             raise KeyError(error_message) from e  # 'direct cause' traceability
-        
 
         # Create publisher to publish rotation commands
         self.cmd_vel_pub = self.node.create_publisher(
@@ -385,10 +343,10 @@ class align_to_wall(slope_angle,align,rotation_direction,laser, last_pos,point_m
         )
         self.feedback_message = "setup"
         return True
-    
+
     def terminate(self, new_status):
         '''
-        terminate() is trigerred once the execution of the behavior finishes, 
+        terminate() is triggered once the execution of the behavior finishes,
         i.e. when the status changes from RUNNING to SUCCESS or FAILURE
         '''
         self.logger.info("[align] terminate: publishing velocity to align")
@@ -397,106 +355,109 @@ class align_to_wall(slope_angle,align,rotation_direction,laser, last_pos,point_m
         twist_msg.linear.x = 0.
         twist_msg.linear.y = 0.
         twist_msg.angular.z = 0.
-        
-        return None
-        
-    def update(self):
 
+        return None
+
+    def update(self):
         process_laser = np.array(self.laser)
 
         self.left_dist = np.mean((np.array(process_laser[509:512])))
         self.front_dist = np.mean((np.array(process_laser[253:256])))
         self.right_dist = np.mean((np.array(process_laser[0:3])))
 
-        if self.align_ang <=ALIGN_THRES:
-            follow_motion(self.last_pos, self.rot,process_laser, point_min_dist,dist,self.align_ang)
+        if self.align_ang <= ALIGN_THRES:
+            FollowMotion(self.last_pos, self.rot, process_laser, self.point_min_dist, self.dist, self.align_ang)
 
         '''
         Closed Corner
         '''
-        if self.front_dist>10.:
-            self.front_dist= 999.999 
-        if self.left_dist>10.:
-            self.left_dist= 999.999 
-        if self.right_dist>10.:
-            self.right_dist= 999.999
+        if self.front_dist > 10.:
+            self.front_dist = 999.999
+        if self.left_dist > 10.:
+            self.left_dist = 999.999
+        if self.right_dist > 10.:
+            self.right_dist = 999.999
 
         print("This is front dist:", self.front_dist)
         print("This is left dist:", self.left_dist)
         print("This is right dist:", self.right_dist)
 
-        max_velocity= 0.30
+        max_velocity = 0.30
 
         # Left closed corner
-        if (self.left_dist)<=1.4 and self.front_dist <= 0.9 and self.left_dist<self.right_dist:
-            self.logger.info("[align]: CLOSED CORNER IDENTIFIED: Taking right turn, wall is on left")    
-            print("Left Distance threshold: ",self.left_dist)
+        if (self.left_dist) <= 1.4 and self.front_dist <= 0.9 and self.left_dist < self.right_dist:
+            self.logger.info("[align]: CLOSED CORNER IDENTIFIED: Taking right turn, wall is on left")
+            print("Left Distance threshold: ", self.left_dist)
             twist_msg1 = Twist()
             twist_msg1.linear.x = 0.
             twist_msg1.linear.y = 0.
             twist_msg1.angular.z = -max_velocity
             self.cmd_vel_pub.publish(twist_msg1)
             return None
-        
+
         # Right closed corner
-        if (self.right_dist)<=1.4 and self.front_dist<= 0.9 and self.left_dist>self.right_dist:
+        if (self.right_dist) <= 1.4 and self.front_dist <= 0.9 and self.left_dist > self.right_dist:
             self.logger.info("[align]: CLOSED CORNER IDENTIFIED: Taking left turn, wall is on right")
-            print("Right Distance threshold: ",self.right_dist)
+            print("Right Distance threshold: ", self.right_dist)
             twist_msg1 = Twist()
             twist_msg1.linear.x = 0.
             twist_msg1.linear.y = 0.
             twist_msg1.angular.z = max_velocity
             self.cmd_vel_pub.publish(twist_msg1)
             return None
-         
+
         # Small space
-        if (self.right_dist<=0.8 or self.left_dist <= 0.8) and self.front_dist<= 0.8:
+        if (self.right_dist <= 0.8 or self.left_dist <= 0.8) and self.front_dist <= 0.8:
             self.logger.info("[align]: CRAMPED CORNER IDENTIFIED: Moving Backwards")
-            print("Left Distance threshold: ",self.left_dist)
-            print("Right Distance threshold: ",self.right_dist)
+            print("Left Distance threshold: ", self.left_dist)
+            print("Right Distance threshold: ", self.right_dist)
             twist_msg1 = Twist()
             twist_msg1.linear.x = -max_velocity
             twist_msg1.linear.y = 0.
             twist_msg1.angular.z = 0.
             self.cmd_vel_pub.publish(twist_msg1)
             return None
-                
+
         else:
-            rotation_direction=1
+            rotation_direction = 1
             self.logger.info("[align]: Rotating ROBILE to align to wall")
-            if slope_angle > 0.0 and (self.left_dist > 0.99 or self.right_dist > 0.99) :
-                rotation_direction = rotation_value # Clockwise rotation
-            if slope_angle < 0.0 and (self.left_dist > 0.99 or self.right_dist > 0.99) :
-                rotation_direction = -rotation_value # Counter-clockwise rotation
-       
+            if self.slope_angle > 0.0 and (self.left_dist > 0.99 or self.right_dist > 0.99):
+                rotation_direction = rotation_value  # Clockwise rotation
+            if self.slope_angle < 0.0 and (self.left_dist > 0.99 or self.right_dist > 0.99):
+                rotation_direction = -rotation_value  # Counter-clockwise rotation
+
             angular_velocity = max_velocity
             twist_msg = Twist()
             twist_msg.linear.x = 0.
             twist_msg.linear.y = 0.
             twist_msg.angular.z = angular_velocity * rotation_direction
-            self.blackboard.set("rotation_direction",rotation_direction)
+            self.blackboard.set("rotation_direction", rotation_direction)
 
             self.cmd_vel_pub.publish(twist_msg)
 
             return None
 
-class follow_wall(last_pos,rotation_direction,process_laser, point_min_dist, dist, align):
-    def __init__(self, topic_name1="/cmd_vel"):
-        # Set up topic name publish rotation commands
+
+class FollowWall:
+    def __init__(self, last_pos, rotation_direction, process_laser, point_min_dist, dist, align, topic_name1="/cmd_vel"):
+        # Set up topic name to publish rotation commands
         self.topic_name = topic_name1
-        self.last_pos= last_pos
-        self.rot=rotation_direction
-        self.process_laser=process_laser
-        # become a behaviour
-        super(follow_wall, self).__init__()
+        self.last_pos = last_pos
+        self.rot = rotation_direction
+        self.process_laser = process_laser
+        self.point_at_min_dist = point_min_dist
+        self.dist = dist
+        self.align = align
+
+        # Become a behavior
+        super(FollowWall, self).__init__()
 
     def setup(self, **kwargs):
         '''
-        Setting up things which generally might require time to prevent delay in tree initialisation
+        Setting up things which generally might require time to prevent delay in tree initialization
         '''
-        
         self.logger.info("[follow] setting up following behavior")
- 
+
         try:
             self.node = kwargs['node']
         except KeyError as e:
@@ -510,89 +471,86 @@ class follow_wall(last_pos,rotation_direction,process_laser, point_min_dist, dis
         )
         self.feedback_message = "setup"
         return True
-    
+
     def terminate(self):
         '''
-        terminate() is trigerred once the execution of the behavior finishes, 
+        terminate() is triggered once the execution of the behavior finishes,
         i.e. when the status changes from RUNNING to SUCCESS or FAILURE
         '''
         self.logger.info("[follow] terminate: publishing velocity to terminate")
-            
+
         twist_msg = Twist()
         twist_msg.linear.x = 0.
         twist_msg.linear.y = 0.
-        twist_msg.angular.z =0.
+        twist_msg.angular.z = 0.
         self.cmd_vel_pub.publish(twist_msg)
-        
+
         return None
-    
 
     def update(self):
-
         self.left_dist = np.mean((np.array(self.process_laser[509:512])))
         self.front_dist = np.mean((np.array(self.process_laser[253:256])))
         self.right_dist = np.mean((np.array(self.process_laser[0:3])))
 
-        if self.front_dist>15.:
-            self.front_dist= 999.999 
-        if self.left_dist>15.:
-            self.left_dist= 999.999     
-        if self.right_dist>15.:
-            self.right_dist= 999.999
+        # If distance exceeds 15, replace it with 999.999
+        if self.front_dist > 15.:
+            self.front_dist = 999.999
+        if self.left_dist > 15.:
+            self.left_dist = 999.999
+        if self.right_dist > 15.:
+            self.right_dist = 999.999
 
         print("This is front dist:", self.front_dist)
         print("This is left dist:", self.left_dist)
         print("This is right dist:", self.right_dist)
-        print("Rotation Direction",self.rot)
+        print("Rotation Direction", self.rot)
 
-        perp_dist=dist
-        align_ang=align
-        point_at_min_dist=point_at_min_dist
-        print("perp_dist-",perp_dist)
-        print("point at min dist: ",point_at_min_dist)
+        perp_dist = self.dist
+        align_ang = self.align
+        point_at_min_dist = self.point_at_min_dist
+        print("perp_dist-", perp_dist)
+        print("point at min dist: ", point_at_min_dist)
 
-        max_velocity= 0.30
-        
+        max_velocity = 0.30
+
+        # Update rotation direction based on last position
         if self.last_pos < 0.4:
-            self.rot= -self.rot
-        
+            self.rot = -self.rot
         if self.last_pos > 0.6:
-            self.rot= self.rot
+            self.rot = self.rot
 
-        if point_at_min_dist<0.4 and perp_dist<1.0:
+        # Check conditions for different movements
+        if point_at_min_dist < 0.4 and perp_dist < 1.0:
             self.logger.info("[follow]: EXECUTION DONE")
             return None
-
-        elif self.left_dist > 1.2 and self.right_dist>1.2 and self.front_dist>1.2:
+        elif self.left_dist > 1.2 and self.right_dist > 1.2 and self.front_dist > 1.2:
             twist_msg = Twist()
             twist_msg.linear.x = -0.0
-            twist_msg.linear.y = self.rot*0.20
-            twist_msg.angular.z = -self.rot*1.1
+            twist_msg.linear.y = self.rot * 0.20
+            twist_msg.angular.z = -self.rot * 1.1
             self.cmd_vel_pub.publish(twist_msg)
-            # print("perp_dist-",perp_dist)
-
             self.logger.info("[follow]: OPEN CORNER FOUND: Now taking a Turn")
             return None
-        
-        elif point_at_min_dist>0.65:
+        elif point_at_min_dist > 0.65:
+            # Move closer to the wall
             self.logger.info("[follow]: Moving closer to the wall")
             twist_msg = Twist()
-            twist_msg.linear.x = max_velocity*0.45
+            twist_msg.linear.x = max_velocity * 0.45
             twist_msg.linear.y = 0.
-            twist_msg.angular.z = -self.rot*ROT_THRES
-            self.cmd_vel_pub.publish(twist_msg)
-
-            return None        
-        elif point_at_min_dist<0.55:
-            self.logger.info("[follow]: Moving away from the wall")
-            twist_msg = Twist()
-            twist_msg.linear.x = max_velocity*0.45
-            twist_msg.linear.y = 0.
-            twist_msg.angular.z = self.rot*ROT_THRES
+            twist_msg.angular.z = -self.rot * ROT_THRES
             self.cmd_vel_pub.publish(twist_msg)
             return None
-        
+        elif point_at_min_dist < 0.55:
+            # Move away from the wall
+            self.logger.info("[follow]: Moving away from the wall")
+            twist_msg = Twist()
+            twist_msg.linear.x = max_velocity * 0.45
+            twist_msg.linear.y = 0.
+            twist_msg.angular.z = self.rot * ROT_THRES
+            self.cmd_vel_pub.publish(twist_msg)
+            return None
         else:
+            # Try to be parallel to the wall
             self.logger.info("[follow]: Trying to be Parallel to wall")
             twist_msg = Twist()
             twist_msg.linear.x = max_velocity
@@ -600,6 +558,7 @@ class follow_wall(last_pos,rotation_direction,process_laser, point_min_dist, dis
             twist_msg.angular.z = 0.
             self.cmd_vel_pub.publish(twist_msg)
             return None
+
 
 
 def main(args=None):

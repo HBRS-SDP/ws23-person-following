@@ -119,8 +119,8 @@ class PoseEstimationNode(Node):
     def publish_movement_commands(self):
         msg = Twist()
         desired_distance = 1.0
-        linear_vel = 0.2
-        angular_vel = 0.25
+        linear_vel = 0.4
+        angular_vel = 0.65
 
         print(type(self.depth_at_person), self.depth_at_person)
 

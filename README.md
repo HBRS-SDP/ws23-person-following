@@ -4,6 +4,7 @@
 Base code for ROS2 based person following robot involving RGB-D camera, laser scanner <br>
 Milestone Presentations [Link](https://drive.google.com/drive/folders/1fSUbau2GBS1j4a7OnIZlPYnxty2QNiYR?usp=drive_link) <br>
 [How to access the API ?](https://github.com/HBRS-SDP/ws23-person-following/edit/testing/README.md)
+
 ### Technologies
 - Robot Platform: Robile3
 - OS: Ubuntu 22.04 LTS
@@ -12,15 +13,17 @@ Milestone Presentations [Link](https://drive.google.com/drive/folders/1fSUbau2GB
 - Libraries: OpenCV, numpy, mediapipe
 
 ### Setup Installation 
-Prerequisites
+**Prerequisites:**
 - opencv
 - mediapipe
 - pyrealsense2
-- Install [ROS2 Humble](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)
+- ROS2 Humble (Installation guide [here](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html))
 
-1. Clone this repo in your ```workspace_name/src``` directory:
+
+1. Clone this repo in your `workspace_name/src` directory using the command:
 ```
-https://github.com/HBRS-SDP/ws23-person-following/
+git clone https://github.com/HBRS-SDP/ws23-person-following/
+
 ```
 2. Install the dependencies
 ```
@@ -28,16 +31,48 @@ sudo apt install python3-dev python3-pip python3-numpy build-essential libgtk-3-
 sudo apt install libopencv-dev python3-opencv
 pip3 install opencv-python
 pip3 install mediapipe
-pip install pyrealsense2
+pip3 install pyrealsense2
 ```
-3. Build the workspace using ```colcon build```
 
-## Launch Gazebo
-To launch pose estimation in gazebo using Realsense camera:
+3. Return to `workspace_name` using the command:
+```
+cd ..
+
+```
+
+4. Build the workspace using ```colcon build```.
+
+
+## To set up the workspace in the robot follow the instructions in the below link:
+
+(Workspace setup in robot [here](https://robile-amr.readthedocs.io/en/rolling/getting_started.html))
+
+Before running any launch files. Download the file ```2robot.launch.py ``` from this repo and put it inside the launch folder in the robot's ros workspace for example:
+
+```ros2_ws/src/robile/launch```
+
+## To publish to the respective topics from the robot.
+
+Run the below commands in the robot to start the topics:
+
+First set the ros distro to ros humble then,
+
+```
+cd ros_ws/ 
+source install/local_setup.bash
+ros2 launch robile_bringup 2robot.launch.py 
+
+```
+
+## Launch file to check the functionality of the realsense camera.
+To launch pose estimation using Realsense camera:
 ```
 ros2 launch pose_estimator realsense_pose_estimator.launch.py 
 ```
-To launch pose estimation in gazebo using system webcam:
+## Launch Follow behaviour
+To launch the behaviour to follow person:  
 ```
-ros2 launch pose_estimator estimate_pose.launch.py
+ros2 launch pose_estimator follow_person.launch.py
 ```
+
+**NOTE:** The follow behaviour does not work, if the realsense camera is not connected

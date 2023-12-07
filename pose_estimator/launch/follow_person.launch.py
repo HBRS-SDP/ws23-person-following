@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
@@ -11,8 +10,7 @@ def generate_launch_description():
             executable='follow_bot',  # Python script name
             name='PoseEstimationNode',
             output='screen',
-            emulate_tty=True,
-            remappings=[('/camera/image_raw', '/your/image_topic')]  # Update topic as needed
+            emulate_tty=True
         )
     	]
     )

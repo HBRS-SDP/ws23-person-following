@@ -45,7 +45,7 @@ cd ..
 
 ## To set up the workspace in the robot follow the instructions in the below link:
 
-(Workspace setup in robot [here]([(https://robile-amr.readthedocs.io/en/humble/source/getting_started.html#cloning-repositories-from-hbrs-amr-group)])
+(Workspace setup in robot [here](https://robile-amr.readthedocs.io/en/humble/source/getting_started.html#cloning-repositories-from-hbrs-amr-group))
 
 Before running any launch files. Download the file ```2robot.launch.py ``` from this repo and put it inside the launch folder in the robot's ros workspace for example:
 

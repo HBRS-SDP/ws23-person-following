@@ -2,8 +2,8 @@
 ## Software Development Project
  
 Base code for ROS2 based person following robot involving RGB-D camera, laser scanner <br>
-Milestone Presentations [Link](https://drive.google.com/drive/folders/1fSUbau2GBS1j4a7OnIZlPYnxty2QNiYR?usp=drive_link) <br>
-- [API Architecture](https://github.com/HBRS-SDP/ws23-person-following/blob/main/API_Plan.md)
+- [Milestone Presentations](https://drive.google.com/drive/folders/1fSUbau2GBS1j4a7OnIZlPYnxty2QNiYR?usp=drive_link) <br>
+- [API Architecture](https://github.com/HBRS-SDP/ws23-person-following/blob/main/API_architecture.md)
 - [User Test Cases](https://github.com/HBRS-SDP/ws23-person-following/blob/main/User_Test_Cases.md)
 
 ### Technologies

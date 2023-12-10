@@ -7,7 +7,7 @@ import numpy as np
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge
 
-class PoseEstimation(Node):
+class PoseEstimationNode(Node):
     def __init__(self):
         super().__init__('pose_estimation_node')
         self.mp_drawing = mp.solutions.drawing_utils
@@ -161,7 +161,7 @@ class PoseEstimation(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    pose_estimation_node = PoseEstimation()
+    pose_estimation_node = PoseEstimationNode()
     rclpy.spin(pose_estimation_node)
     pose_estimation_node.destroy_node()
     rclpy.shutdown()

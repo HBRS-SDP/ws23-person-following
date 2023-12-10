@@ -30,7 +30,7 @@ sudo apt install python3-dev python3-pip python3-numpy build-essential libgtk-3-
 sudo apt install libopencv-dev python3-opencv
 pip3 install opencv-python
 pip3 install mediapipe
-pip install pyrealsense2
+
 ```
 3. Build the workspace using ```colcon build```
 

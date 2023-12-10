@@ -32,14 +32,39 @@ pip3 install opencv-python
 pip3 install mediapipe
 
 ```
-3. Build the workspace using ```colcon build```
+3. Build the workspace using ```colcon build```.
 
-## Launch Gazebo
-To launch pose estimation in gazebo using Realsense camera:
+
+## To set up the workspace in the robot follow the instructions in the below link:
+
+(Workspace setup in robot [here](https://robile-amr.readthedocs.io/en/humble/source/getting_started.html#cloning-repositories-from-hbrs-amr-group))
+
+Before running any launch files. Download the file ```2robot.launch.py ``` from this repo and put it inside the launch folder in the robot's ROS workspace for example:
+
+```ros2_ws/src/robile/launch```
+
+## To publish to the respective topics from the robot.
+
+Run the below commands in the robot to start the topics:
+
+First set the ros distro to ros humble then,
+
+```
+cd ros_ws/ 
+source install/local_setup.bash
+ros2 launch robile_bringup 2robot.launch.py 
+
+```
+
+## Launch file to check the functionality of the realsense camera.
+To launch pose estimation using Realsense camera:
 ```
 ros2 launch pose_estimator realsense_pose_estimator.launch.py 
 ```
-To launch pose estimation in gazebo using system webcam:
+## Launch Follow behaviour
+To launch the behaviour to follow person:  
 ```
-ros2 launch pose_estimator estimate_pose.launch.py
+ros2 launch pose_estimator follow_person.launch.py
 ```
+
+**NOTE:** The follow behaviour does not work, if the realsense camera is not connected

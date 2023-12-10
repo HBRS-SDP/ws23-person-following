@@ -138,10 +138,6 @@ class PoseEstimationNode(Node):
             # Stop at desired distance
             self.publish_stop_command()
 
-        elif self.depth_at_person < desired_distance:
-            # Move backward
-            self.publish_stop_command()
-
         self.publisher_.publish(msg)
 
     def publish_stop_command(self):

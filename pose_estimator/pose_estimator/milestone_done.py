@@ -14,20 +14,20 @@ class PoseEstimationNode(Node):
         self.mp_pose = mp.solutions.pose
         self.bridge = CvBridge()
 
-        # Initialize RealSense pipeline
+        # Initializing RealSense pipeline
         self.depth_image = None
 
-        # Create a publisher to control the robot's movement
+        # Sublisher to control the robot's movement
         self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
 
-        # Create a subscriber to receive laser scan data
+        # Subscriber to receive laser scan data
         self.scan_subscription = self.create_subscription(
             LaserScan,
             '/scan',
             self.scan_callback,
             10)
 
-        # Create a subscriber to receive joystick input
+        # Subscriber to receive joystick input
         self.joy_subscription = self.create_subscription(
             Joy,
             '/joy',
@@ -35,7 +35,7 @@ class PoseEstimationNode(Node):
             10
         )
 
-        # Create a subscriber to receive camera data
+        # Subscriber to receive camera data
         self.camera_subscription = self.create_subscription(
             Image,
             '/camera/camera/color/image_raw',
@@ -56,27 +56,34 @@ class PoseEstimationNode(Node):
         self.point_at_min_dist = 0.
         self.ranges = None
         self.buttons = []
+        self.left_dist = 999999.9 # Left
+        self.right_dist = 999999.9 # Right
 
     def joy_callback(self, joy_msg):
-        # Process joystick input here
-        # Example: Extract joystick axes and buttons
+        # Processing joystick input here
         self.buttons = joy_msg.buttons
 
     def depth_callback(self, depth_msg):
         try:
-            # Process depth camera data for depth calculation
+            # Processing depth camera data for depth calculation
             cv_depth_image = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
             self.depth_image = cv_depth_image.copy()
         except Exception as e:
             self.get_logger().info("Exception in depth_callback: {0}".format(e))
 
     def scan_callback(self, scan_msg):
-        # Use laser scan data for collision avoidance
-        self.ranges = scan_msg.ranges
+        # #Uncomment to check the length of the laser array
+        # self.ranges = scan_msg.ranges
+        # print("Length of laser array: ", len(self.ranges))
+
+        #The values between left and right
+        self.ranges = scan_msg.ranges[1:180]
         laser = np.array(self.ranges)
         laser = np.nan_to_num(laser, nan=0.0)
         laser[laser <= 0.02] = 1.0
         self.point_at_min_dist= min(laser)
+        self.left_dist = scan_msg.ranges[180]
+        self.right_dist = scan_msg.ranges[0]
         print("Min point: ", self.point_at_min_dist)
 
 
@@ -106,8 +113,16 @@ class PoseEstimationNode(Node):
                 center_x, center_y = width // 2, height // 2
                 
                 if self.depth_image is not None:
-                    self.depth_at_person = self.depth_image[center_y, center_x]  # Modify this line based on depth data format
+                    self.depth_at_person = self.depth_image[center_y, center_x] 
+
+                    if self.depth_at_person > 3.0:
+
+                        print("Person detected too far!")
+                        self.publish_stop_command()
                     
+                    else:
+                        pass
+ 
                 self.publish_movement_commands()
 
             else:
@@ -130,17 +145,31 @@ class PoseEstimationNode(Node):
             print("Avoiding collision", self.point_at_min_dist)
 
         elif self.depth_at_person > desired_distance:
-            # Move forward
+            # Move forward with left and right motion
+            print("Following person")
             msg.linear.x = linear_vel
             msg.angular.z = (0.5 - self.person_x) * angular_vel
 
         elif abs(self.depth_at_person - desired_distance) <= 0.1:
-            # Stop at desired distance
+            # Maintaining desired distance
             self.publish_stop_command()
 
+
         elif self.depth_at_person < desired_distance:
-            # Move backward
+            # Maintaining desired distance
             self.publish_stop_command()
+
+        elif self.left_dist< 0.35 and self.right_dist> 0.35:
+            msg.linear.y = 0.1
+            msg.angular.z = 0.0
+        
+        elif self.left_dist> 0.35 and self.right_dist< 0.35:
+            msg.linear.y = -0.1
+            msg.angular.z = 0.0
+
+        elif self.left_dist< 0.35 and self.right_dist< 0.35:
+
+            pass
 
         self.publisher_.publish(msg)
 

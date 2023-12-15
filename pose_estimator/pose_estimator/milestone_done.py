@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 import cv2
+import numpy as np
 import mediapipe as mp
 from sensor_msgs.msg import Joy, LaserScan, Image
 import numpy as np
@@ -50,7 +51,7 @@ class PoseEstimationNode(Node):
             10
         )
 
-        self.safe_min_range = 0.25
+        self.safe_min_range = 0.4
         self.person_x = None
         self.depth_at_person = None
         self.point_at_min_dist = 0.
@@ -77,13 +78,20 @@ class PoseEstimationNode(Node):
         # print("Length of laser array: ", len(self.ranges))
 
         #The values between left and right
-        self.ranges = scan_msg.ranges[1:180]
+        self.ranges = scan_msg.ranges
         laser = np.array(self.ranges)
         laser = np.nan_to_num(laser, nan=0.0)
         laser[laser <= 0.02] = 1.0
         self.point_at_min_dist= min(laser)
-        self.left_dist = scan_msg.ranges[180]
-        self.right_dist = scan_msg.ranges[0]
+                
+        self.left_dist = np.mean(np.array(scan_msg.ranges[509:512]))
+
+        self.right_dist = np.mean(np.array(scan_msg.ranges[0:3]))
+
+        # print("LEN",len(self.ranges)) - 513
+        print("left_dist--",self.left_dist)
+        print("right_dist--",self.right_dist)
+
         print("Min point: ", self.point_at_min_dist)
 
 
@@ -115,7 +123,7 @@ class PoseEstimationNode(Node):
                 if self.depth_image is not None:
                     self.depth_at_person = self.depth_image[center_y, center_x] 
 
-                    if self.depth_at_person > 3.0:
+                    if self.depth_at_person > 2.5:
 
                         print("Person detected too far!")
                         self.publish_stop_command()
@@ -134,8 +142,8 @@ class PoseEstimationNode(Node):
     def publish_movement_commands(self):
         msg = Twist()
         desired_distance = 1.0
-        linear_vel = 0.4
-        angular_vel = 0.65
+        linear_vel = 0.3
+        angular_vel = 0.5
 
         print(type(self.depth_at_person), self.depth_at_person)
 
@@ -144,28 +152,44 @@ class PoseEstimationNode(Node):
             self.publish_stop_command()
             print("Avoiding collision", self.point_at_min_dist)
 
+            if self.left_dist< 0.35 and self.right_dist> 0.35:
+                msg.linear.x = 0.
+                msg.linear.y = 0.15
+                msg.angular.z = 0.0
+                print("Moving Left")
+            
+            elif self.left_dist> 0.35 and self.right_dist< 0.35:
+                msg.linear.x = 0.
+                msg.linear.y = 0.
+                msg.angular.z = 0.0
+                print("Moving Right")
+                
         elif self.depth_at_person > desired_distance:
             # Move forward with left and right motion
             print("Following person")
             msg.linear.x = linear_vel
             msg.angular.z = (0.5 - self.person_x) * angular_vel
 
+            # if self.point_at_min_dist < self.safe_min_range and self.left_dist< 0.35 and self.right_dist> 0.35:
+            #     msg.linear.x = 0.
+            #     msg.linear.y = 0.15
+            #     msg.angular.z = 0.0
+            #     print("Moving Left")
+            
+            # elif self.point_at_min_dist < self.safe_min_range and self.left_dist> 0.35 and self.right_dist< 0.35:
+            #     msg.linear.x = 0.
+            #     msg.linear.y = 0.
+            #     msg.angular.z = 0.0
+            #     print("Moving Right")
+
+
         elif abs(self.depth_at_person - desired_distance) <= 0.1:
             # Maintaining desired distance
             self.publish_stop_command()
 
-
         elif self.depth_at_person < desired_distance:
             # Maintaining desired distance
             self.publish_stop_command()
-
-        elif self.left_dist< 0.35 and self.right_dist> 0.35:
-            msg.linear.y = 0.1
-            msg.angular.z = 0.0
-        
-        elif self.left_dist> 0.35 and self.right_dist< 0.35:
-            msg.linear.y = -0.1
-            msg.angular.z = 0.0
 
         elif self.left_dist< 0.35 and self.right_dist< 0.35:
 

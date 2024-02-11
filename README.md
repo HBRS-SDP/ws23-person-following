@@ -39,7 +39,7 @@ pip3 install mediapipe
 
 (Workspace setup in robot [here](https://robile-amr.readthedocs.io/en/humble/source/getting_started.html#cloning-repositories-from-hbrs-amr-group))
 
-Before running any launch files. Download the file ```2robot.launch.py ``` from this repo and put it inside the launch folder in the robot's ROS workspace for example:
+Before running any launch files. Download the file ```robot_realsense.launch.py ``` from this repo and put it inside the launch folder in the robot's ROS workspace for example:
 
 ```ros2_ws/src/robile/launch```
 

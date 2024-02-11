@@ -50,7 +50,7 @@ class PoseEstimationNode(Node):
             10
         )
 
-        self.safe_min_range = 0.25
+        self.safe_min_range = 0.40
         self.person_x = None
         self.depth_at_person = None
         self.point_at_min_dist = 0.

@@ -1,0 +1,12 @@
+Title	URL	Assignees	Status
+QR code tracking (optional)	https://github.com/HBRS-SDP/ws23-person-following/issues/11	Swithinraj	Todo
+Setting up Realsense in ROS2 Humble	https://github.com/HBRS-SDP/ws23-person-following/issues/3	Swithinraj	Done
+US0: Testing SS22’s approach on Sim and Robile	https://github.com/HBRS-SDP/ws23-person-following/issues/1	Shaxpy	Done
+US1: Understanding RGB and Depth data from realsense	https://github.com/HBRS-SDP/ws23-person-following/issues/8	Shaxpy	Done
+US1: Finalizing an algorithm for person detection	https://github.com/HBRS-SDP/ws23-person-following/issues/2	Shaxpy, Swithinraj, Talha-Riyaz-Shaikh, zaid3727	Done
+US3: Optimizing navigation behavior	https://github.com/HBRS-SDP/ws23-person-following/issues/9	Talha-Riyaz-Shaikh, zaid3727	Done
+US2: Trajectory Tracking algorithm w.r.t. ground plane	https://github.com/HBRS-SDP/ws23-person-following/issues/4	zaid3727	Done
+US4: Implement safety mechanisms	https://github.com/HBRS-SDP/ws23-person-following/issues/10	Swithinraj	Done
+Divide class into separate functions 	https://github.com/HBRS-SDP/ws23-person-following/issues/13	Shaxpy, Swithinraj, zaid3727	Done
+US6: Documentation	https://github.com/HBRS-SDP/ws23-person-following/issues/12	Shaxpy, Swithinraj, Talha-Riyaz-Shaikh, zaid3727	Done
+US2: Developing a Following behaviour strategy	https://github.com/HBRS-SDP/ws23-person-following/issues/5	Talha-Riyaz-Shaikh, zaid3727	Done

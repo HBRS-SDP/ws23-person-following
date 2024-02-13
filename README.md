@@ -52,7 +52,7 @@ First set the ros distro to ros humble then,
 ```
 cd ros_ws/ 
 source install/local_setup.bash
-ros2 launch robile_bringup 2robot.launch.py 
+ros2 launch robile_bringup robot_realsense.launch.py 
 
 ```
 

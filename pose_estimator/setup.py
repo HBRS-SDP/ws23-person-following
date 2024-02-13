@@ -25,7 +25,7 @@ setup(
         'console_scripts': [
         'estimate_pose=pose_estimator.estimate_pose:main',
         'estimate_pose_realsense=pose_estimator.estimate_pose_realsense:main',
-        'milestone_done=pose_estimator.milestone_done:main',
+        'follow_bot=pose_estimator.follow_bot:main',
         ],
     },
 )

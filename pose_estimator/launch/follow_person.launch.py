@@ -7,7 +7,7 @@ def generate_launch_description():
     	[
         Node(
             package='pose_estimator',  # Package name
-            executable='milestone_done',  # Python script name
+            executable='follow_bot',  # Python script name
             name='PoseEstimationNode',
             output='screen',
             emulate_tty=True

@@ -50,7 +50,7 @@ class PoseEstimationNode(Node):
             10
         )
 
-        self.safe_min_range = 0.25
+        self.safe_min_range = 0.4
         self.person_x = None
         self.depth_at_person = None
         self.point_at_min_dist = 0.
@@ -121,9 +121,6 @@ class PoseEstimationNode(Node):
         desired_distance = 1.0
         linear_vel = 0.4
         angular_vel = 0.65
-
-        print(type(self.depth_at_person), self.depth_at_person)
-
 
         if self.point_at_min_dist < self.safe_min_range:
             self.publish_stop_command()

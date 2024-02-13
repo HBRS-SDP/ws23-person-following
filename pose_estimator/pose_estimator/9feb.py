@@ -3,7 +3,7 @@ from rclpy.node import Node
 import cv2
 import numpy as np
 import mediapipe as mp
-from sensor_msgs.msg import Joy, LaserScan, Image
+from sensor_msgs.msg import Joy, LaserScan, Image, PointCloud2
 import numpy as np
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge
@@ -46,12 +46,12 @@ class PoseEstimationNode(Node):
 
         self.depth_subscription = self.create_subscription(
             Image,
-            '/camera/camera/depth/image_rect_raw',
+            '/camera/camera/depth/color/points',
             self.depth_callback,
             10
         )
 
-        self.safe_min_range = 0.22
+        self.safe_min_range = 0.20
         self.person_x = None
         self.depth_at_person = None
         self.point_at_min_dist = 0.
@@ -67,7 +67,9 @@ class PoseEstimationNode(Node):
     def depth_callback(self, depth_msg):
         try:
             # Processing depth camera data for depth calculation
-            cv_depth_image = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
+            cv_depth_image = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding= "passthrough")
+            # cv2.imshow("depth",cv_depth_image)
+            # cv2.waitKey(0)
             self.depth_image = cv_depth_image.copy()
         except Exception as e:
             self.get_logger().info("Exception in depth_callback: {0}".format(e))
@@ -91,10 +93,10 @@ class PoseEstimationNode(Node):
 
         # print("LEN",len(self.ranges)) - 513
         # print("left_dist--",self.left_dist)
-        # print("right_dist--",self.right_dist)
+        print("right_dist--",self.right_dist)
         # # print("front_dist--",self.front_dist)
 
-        # print("Min point: ", self.point_at_min_dist)
+        print("Min point: ", self.point_at_min_dist)
 
 
     def camera_callback(self, image_msg):
@@ -123,9 +125,20 @@ class PoseEstimationNode(Node):
                 center_x, center_y = width // 2, height // 2
                 
                 if self.depth_image is not None:
-                    self.depth_at_person = self.depth_image[center_y, center_x] 
+                    self.depth_at_person = self.depth_image[center_y, center_x]
+                    # self.depth_at_person = depth_frame.get_distance(center_x, center_y)
+                    print("The depth in real",self.depth_at_person)
+                    print("Type of depth", float(self.depth_at_person)) 
+
+                    if self.depth_at_person > 4.5:
+
+                        print("Person detected too far!", self.depth_at_person)
+                        self.publish_stop_command()
+                    
+                    else:
+                        pass
  
-                self.publish_movement_commands()
+                # self.publish_movement_commands()
 
             else:
                 # Stop the robot if no person detected
@@ -145,17 +158,17 @@ class PoseEstimationNode(Node):
             self.publish_stop_command()
             print("Avoiding collision", self.point_at_min_dist)
 
-        elif self.right_dist< 0.25 and self.left_dist>0.5:
+        elif self.right_dist> 0.35 and self.left_dist< 0.24:
             msg.linear.x = 0.
             msg.linear.y =  0.1
             msg.angular.z = 0.0
-            print("Moving Left")
+            print("Moving right")
         
-        elif self.right_dist>0.5 and self.left_dist<0.25:
+        elif self.left_dist> 0.35 and self.right_dist< 0.24:
             msg.linear.x = 0.
             msg.linear.y = -0.1
             msg.angular.z = 0.0
-            print("Moving Right")
+            print("Moving left")
             
 
         elif self.depth_at_person > desired_distance:

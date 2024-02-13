@@ -20,8 +20,8 @@ The software package is delivered as a Python script structured as a ROS package
 - **Sensor Fusion:**
   - The system fuses data from pose estimation and laser scans to make informed decisions about robot movement.
 
-- **Obstacle Avoidance:**
-  - If obstacles are detected in the laser scan data, the robot adjusts its movement to avoid collisions (`/scan`).
+- **Collision Avoidance:**
+  - If obstacles are detected in the laser scan data, the robot stops to avoid collisions (`/scan`).
   - The obstacle avoidance behavior is integrated with the existing pose-based following behavior.
 
 - **Robot Movement:**
